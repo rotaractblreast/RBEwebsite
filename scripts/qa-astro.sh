@@ -17,8 +17,8 @@ ok() {
 }
 
 echo "== Building =="
-export USE_FS_CONTENT="${USE_FS_CONTENT:-1}"
-export PUBLIC_SANITY_PROJECT_ID="${PUBLIC_SANITY_PROJECT_ID:-placeholder}"
+export USE_FS_CONTENT="${USE_FS_CONTENT:-0}"
+export PUBLIC_SANITY_PROJECT_ID="${PUBLIC_SANITY_PROJECT_ID:-t6bu0f9m}"
 export PUBLIC_SANITY_DATASET="${PUBLIC_SANITY_DATASET:-production}"
 export ASTRO_TELEMETRY_DISABLED=1
 npm run build
@@ -41,6 +41,7 @@ ok "pagefind" 'test -d "$DIST/pagefind"'
 ok "privacy_ga_copy" 'grep -q "Google Analytics" "$DIST/privacy/index.html"'
 ok "studio_route" 'test -f "$DIST/admin/index.html"'
 ok "no_decap_config" '! test -f "$DIST/admin/config.yml"'
+ok "indexnow_key" 'test -f "$DIST/b689725f013d420fbf61a6c4df192c77.txt" && grep -q "b689725f013d420fbf61a6c4df192c77" "$DIST/b689725f013d420fbf61a6c4df192c77.txt"'
 
 post_count=$(find "$DIST/news" -name index.html | wc -l | tr -d ' ')
 ok "news_pages_built" "test \"$post_count\" -gt 5"

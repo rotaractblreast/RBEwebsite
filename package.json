@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "astro dev",
     "dev:fresh": "rm -rf node_modules/.vite && astro dev",
-    "build": "astro build && pagefind --site dist && node scripts/sync-pagefind-dev.mjs",
+    "build": "astro build && pagefind --site dist && node scripts/sync-pagefind-dev.mjs && node scripts/submit-indexnow.mjs --build",
     "preview": "astro preview",
+    "indexnow": "node scripts/submit-indexnow.mjs",
     "pagefind:sync": "node scripts/sync-pagefind-dev.mjs",
     "astro": "astro",
     "migrate": "node --env-file=.env scripts/migrate-content.mjs",

@@ -108,8 +108,9 @@ netlify.toml         Build, headers, redirects
 | Script | Purpose |
 |--------|---------|
 | `npm run dev` | Local site + Studio |
-| `npm run build` | Production build + Pagefind |
+| `npm run build` | Production build + Pagefind + IndexNow (prod) |
 | `npm run qa` | `scripts/qa-astro.sh` |
+| `npm run indexnow` | Submit canonical URLs to IndexNow API (Bing/Yandex) |
 | `npm run purge:orphans` | Dry-run unused Sanity assets |
 | `npm run repair:studio` | One-off data repairs (needs write token) |
 
