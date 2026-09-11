@@ -30,6 +30,13 @@
     X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
+[[headers]]
+  for = "/connect/*"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
 # Critical host / path redirects only.
 # Do NOT add trailing-slash canonicals like /about → /about/: with force=true,
 # Netlify matches both /about and /about/ and loops (ERR_TOO_MANY_REDIRECTS).

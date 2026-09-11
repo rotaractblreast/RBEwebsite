@@ -83,7 +83,7 @@ export default defineConfig({
     }),
     sitemap({
       filter: (page) => {
-        if (page.includes("/admin") || page.includes("/search")) return false;
+        if (page.includes("/admin") || page.includes("/search") || page.includes("/connect")) return false;
         // Paginated list clones (page-2+) dilute crawl budget; page 1 hubs stay.
         if (/\/page-\d+\/?$/.test(page)) return false;
         // Thin news day archives (/news/YYYY/MM/DD/) — keep real posts under them.

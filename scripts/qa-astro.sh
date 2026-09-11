@@ -42,6 +42,8 @@ ok "privacy_ga_copy" 'grep -q "Google Analytics" "$DIST/privacy/index.html"'
 ok "studio_route" 'test -f "$DIST/admin/index.html"'
 ok "no_decap_config" '! test -f "$DIST/admin/config.yml"'
 ok "indexnow_key" 'test -f "$DIST/b689725f013d420fbf61a6c4df192c77.txt" && grep -q "b689725f013d420fbf61a6c4df192c77" "$DIST/b689725f013d420fbf61a6c4df192c77.txt"'
+ok "connect_route" 'test -f "$DIST/connect/index.html"'
+ok "robots_disallow_connect" 'grep -q "Disallow: /connect/" "$DIST/robots.txt"'
 
 post_count=$(find "$DIST/news" -name index.html | wc -l | tr -d ' ')
 ok "news_pages_built" "test \"$post_count\" -gt 5"

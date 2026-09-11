@@ -1,0 +1,2001 @@
+---
+import "@/styles/global.css";
+import { SITE } from "@/lib/site";
+
+// Empty until the Apps Script Web App is deployed or set in env
+const formsApi =
+  import.meta.env.PUBLIC_FORMS_API_URL ||
+  process.env.PUBLIC_FORMS_API_URL ||
+  "";
+---
+
+<!DOCTYPE html>
+<html lang="en-IN" class="h-full bg-[#fff8f5] text-[#231a11]">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ff9000" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <title>Connect Portal | {SITE.title}</title>
+    <link rel="shortcut icon" href="/images/site/favicon.png" type="image/x-icon" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="min-h-full flex flex-col font-sans antialiased text-[#231a11] bg-[#fff8f5]">
+    <div id="connect-app" data-api={formsApi} class="flex-1 flex flex-col">
+      <!-- Loading Screen -->
+      <div id="app-loading" class="flex-1 flex items-center justify-center p-6">
+        <div class="flex flex-col items-center gap-4 text-center">
+          <div class="h-10 w-10 border-4 border-[#ff9000] border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-sm text-stone-600 font-medium">Initializing RBE Connect Portal…</p>
+        </div>
+      </div>
+
+      <!-- Auth Screen -->
+      <div id="auth-screen" class="hidden flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
+        <div class="w-full max-w-md bg-white border border-stone-200/90 rounded-2xl shadow-xl p-6 sm:p-8">
+          <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-50 border border-amber-200 text-[#8e4e00] mb-4 shadow-xs">
+              <span class="material-symbols-outlined text-3xl">badge</span>
+            </div>
+            <h1 class="text-2xl font-bold font-display text-stone-900 tracking-tight">RBE Connect</h1>
+            <p class="text-sm text-stone-600 mt-1">Member Applications & Reviewer Portal</p>
+          </div>
+
+          <div id="login-alert" class="hidden mb-6 p-4 rounded-xl text-sm border flex items-start gap-3"></div>
+
+          <form id="login-form" class="space-y-5">
+            <div>
+              <label for="login-email" class="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-2">Reviewer Email</label>
+              <div class="relative">
+                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 text-xl pointer-events-none">mail</span>
+                <input
+                  type="email"
+                  id="login-email"
+                  required
+                  placeholder="reviewer@rotaractblreast.org"
+                  class="w-full pl-11 pr-4 py-3 bg-stone-50/70 border border-stone-300 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:bg-white focus:outline-none focus:border-[#ff9000] focus:ring-1 focus:ring-[#ff9000] transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label for="login-password" class="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-2">Password</label>
+              <div class="relative">
+                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 text-xl pointer-events-none">lock</span>
+                <input
+                  type="password"
+                  id="login-password"
+                  required
+                  placeholder="••••••••"
+                  class="w-full pl-11 pr-11 py-3 bg-stone-50/70 border border-stone-300 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:bg-white focus:outline-none focus:border-[#ff9000] focus:ring-1 focus:ring-[#ff9000] transition-colors"
+                />
+                <button
+                  type="button"
+                  id="toggle-password"
+                  class="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 text-xl focus:outline-none"
+                  aria-label="Toggle password visibility"
+                >
+                  <span class="material-symbols-outlined text-xl">visibility</span>
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              id="login-btn"
+              class="w-full mt-2 py-3 px-4 bg-[#ff9000] hover:bg-[#e07f00] text-stone-950 font-bold rounded-xl text-sm transition-all duration-150 flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>Sign in to Dashboard</span>
+              <span class="material-symbols-outlined text-lg">arrow_forward</span>
+            </button>
+          </form>
+
+          <div class="mt-8 pt-6 border-t border-stone-200/80 text-center">
+            <p class="text-xs text-stone-500">
+              Access restricted to authorized RBE Board & Reviewers.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Dashboard -->
+      <div id="dashboard-screen" class="hidden flex-1 flex flex-col">
+        <!-- Top Navigation -->
+        <header class="bg-white/95 backdrop-blur border-b border-stone-200/90 sticky top-0 z-30 shadow-xs">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <a href="/" class="flex items-center gap-2.5 text-stone-900 hover:opacity-90 transition-opacity">
+                <img src="/images/site/favicon.png" alt="RBE" class="h-8 w-8 rounded-lg" />
+                <span class="font-display font-bold text-lg tracking-tight hidden sm:inline text-stone-900">RBE Connect</span>
+              </a>
+              <span class="hidden md:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                Reviewer Portal
+              </span>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <div class="hidden sm:flex items-center gap-2 bg-stone-50 border border-stone-200 px-3 py-1.5 rounded-xl text-xs">
+                <span class="material-symbols-outlined text-[#8e4e00] text-base">person</span>
+                <span id="user-display" class="font-medium text-stone-700">Reviewer</span>
+              </div>
+
+              <button
+                type="button"
+                id="refresh-btn"
+                title="Refresh latest data"
+                class="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-900 transition-colors flex items-center justify-center border border-stone-200/60"
+              >
+                <span class="material-symbols-outlined text-xl" id="refresh-icon">sync</span>
+              </button>
+
+              <button
+                type="button"
+                id="logout-btn"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-colors"
+              >
+                <span class="material-symbols-outlined text-base">logout</span>
+                <span class="hidden sm:inline">Log out</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          <!-- Metric Tiles -->
+          <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="bg-white border border-stone-200/90 rounded-2xl p-4 sm:p-5 shadow-xs min-w-0">
+              <div class="flex items-center justify-between text-stone-500 text-xs font-medium uppercase tracking-wider mb-2">
+                <span class="truncate">Total Applications</span>
+                <span class="material-symbols-outlined text-base text-stone-400">description</span>
+              </div>
+              <p id="stat-total" class="text-2xl sm:text-3xl font-bold font-display text-stone-900">0</p>
+            </div>
+
+            <div class="bg-white border border-amber-200/70 rounded-2xl p-4 sm:p-5 shadow-xs min-w-0">
+              <div class="flex items-center justify-between text-amber-800 text-xs font-medium uppercase tracking-wider mb-2">
+                <span class="truncate">Pending</span>
+                <span class="material-symbols-outlined text-base text-amber-600">pending</span>
+              </div>
+              <p id="stat-pending" class="text-2xl sm:text-3xl font-bold font-display text-[#8e4e00]">0</p>
+            </div>
+
+            <div class="bg-white border border-blue-200/70 rounded-2xl p-4 sm:p-5 shadow-xs min-w-0">
+              <div class="flex items-center justify-between text-blue-700 text-xs font-medium uppercase tracking-wider mb-2">
+                <span class="truncate">In Review</span>
+                <span class="material-symbols-outlined text-base text-blue-600">search</span>
+              </div>
+              <p id="stat-review" class="text-2xl sm:text-3xl font-bold font-display text-blue-700">0</p>
+            </div>
+
+            <div class="bg-white border border-emerald-200/70 rounded-2xl p-4 sm:p-5 shadow-xs min-w-0">
+              <div class="flex items-center justify-between text-emerald-700 text-xs font-medium uppercase tracking-wider mb-2">
+                <span class="truncate">Accepted</span>
+                <span class="material-symbols-outlined text-base text-emerald-600">check_circle</span>
+              </div>
+              <p id="stat-accepted" class="text-2xl sm:text-3xl font-bold font-display text-emerald-700">0</p>
+            </div>
+
+            <div class="col-span-2 lg:col-span-1 bg-white border border-purple-200/70 rounded-2xl p-4 sm:p-5 shadow-xs min-w-0">
+              <div class="flex items-center justify-between text-purple-700 text-xs font-medium uppercase tracking-wider mb-2">
+                <span class="truncate">Subscribers</span>
+                <span class="material-symbols-outlined text-base text-purple-600">mail</span>
+              </div>
+              <p id="stat-subscribers" class="text-2xl sm:text-3xl font-bold font-display text-purple-700">0</p>
+            </div>
+          </div>
+
+          <!-- Tab Navigation -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-4">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                id="tab-btn-applications"
+                class="tab-btn active px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 bg-[#ff9000] text-stone-950 shadow-sm"
+              >
+                <span class="material-symbols-outlined text-lg">person_add</span>
+                <span>Member Applications</span>
+                <span id="badge-applications" class="ml-1 px-2 py-0.5 rounded-full text-xs font-bold bg-stone-950/15">0</span>
+              </button>
+              <button
+                type="button"
+                id="tab-btn-subscribers"
+                class="tab-btn px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 bg-white text-stone-700 border border-stone-200 hover:text-stone-900 hover:bg-stone-50"
+              >
+                <span class="material-symbols-outlined text-lg">mark_email_read</span>
+                <span>Subscribers & Messages</span>
+                <span id="badge-subscribers" class="ml-1 px-2 py-0.5 rounded-full text-xs font-bold bg-stone-100 text-stone-600">0</span>
+              </button>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                id="export-csv-btn"
+                class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 border border-stone-800 shadow-xs"
+              >
+                <span class="material-symbols-outlined text-lg text-emerald-400">download</span>
+                <span>Export Applications CSV</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- View: Applications -->
+          <div id="view-applications" class="space-y-5">
+            <!-- Filter Bar with Custom Styled Dropdowns -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div class="relative">
+                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 text-xl pointer-events-none">search</span>
+                <input
+                  type="text"
+                  id="search-input"
+                  placeholder="Search name, email, phone, college…"
+                  class="w-full pl-10 pr-4 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:border-[#ff9000] focus:ring-2 focus:ring-[#ff9000]/20 shadow-2xs transition-all"
+                />
+              </div>
+
+              <!-- Custom Styled Select: Status -->
+              <div id="filter-status-wrapper" class="relative"></div>
+
+              <!-- Custom Styled Select: Occupation -->
+              <div id="filter-occupation-wrapper" class="relative"></div>
+
+              <!-- Custom Styled Select: Experience -->
+              <div id="filter-experience-wrapper" class="relative"></div>
+            </div>
+
+            <!-- Mobile Applications Card Feed (Shown on mobile screens < 640px) -->
+            <div id="applications-mobile-feed" class="sm:hidden space-y-3">
+              <!-- Rendered dynamically -->
+            </div>
+
+            <!-- Desktop Applications Table (Hidden on mobile screens, shown >= 640px) -->
+            <div class="hidden sm:block bg-white border border-stone-200/90 rounded-2xl overflow-hidden shadow-xs">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-stone-700 min-w-[720px]">
+                  <thead class="bg-stone-50/90 text-xs uppercase font-semibold text-stone-600 tracking-wider border-b border-stone-200">
+                    <tr>
+                      <th class="py-4 px-4 sm:px-6">Applicant</th>
+                      <th class="py-4 px-4 hidden md:table-cell">Occupation</th>
+                      <th class="py-4 px-4 hidden lg:table-cell">Rotaract</th>
+                      <th class="py-4 px-4">Status</th>
+                      <th class="py-4 px-4 hidden sm:table-cell">Latest Remark & Reviewer</th>
+                      <th class="py-4 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="applications-tbody" class="divide-y divide-stone-100">
+                    <!-- Dynamic Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="no-apps-state" class="hidden p-10 sm:p-12 text-center text-stone-500 bg-white border border-stone-200/90 rounded-2xl">
+              <span class="material-symbols-outlined text-4xl mb-2 text-stone-400">inbox</span>
+              <p class="text-base font-medium text-stone-800">No matching applications found</p>
+              <p class="text-xs text-stone-500 mt-1">Try clearing filters or search keywords.</p>
+            </div>
+          </div>
+
+          <!-- View: Subscribers & Contact Messages -->
+          <div id="view-subscribers" class="hidden space-y-6">
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                id="sub-toggle-news"
+                class="sub-toggle active px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#ff9000] text-stone-950 transition-colors"
+              >
+                Newsletter Subscribers (<span id="sub-news-count">0</span>)
+              </button>
+              <button
+                type="button"
+                id="sub-toggle-contact"
+                class="sub-toggle px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-stone-200 text-stone-700 hover:text-stone-900 transition-colors"
+              >
+                Contact Inquiries (<span id="sub-contact-count">0</span>)
+              </button>
+            </div>
+
+            <!-- Newsletter Table -->
+            <div id="sub-news-panel" class="bg-white border border-stone-200/90 rounded-2xl overflow-hidden shadow-xs">
+              <!-- Mobile Cards (< 640px) -->
+              <div id="subscribers-mobile-feed" class="sm:hidden space-y-2.5 p-3"></div>
+
+              <!-- Desktop Table (>= 640px) -->
+              <div class="hidden sm:block overflow-x-auto">
+                <table class="w-full text-left text-sm text-stone-700 min-w-[500px]">
+                  <thead class="bg-stone-50/90 text-xs uppercase font-semibold text-stone-600 tracking-wider border-b border-stone-200">
+                    <tr>
+                      <th class="py-3.5 px-6">Timestamp</th>
+                      <th class="py-3.5 px-6">Email Address</th>
+                      <th class="py-3.5 px-6 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="subscribers-tbody" class="divide-y divide-stone-100">
+                    <!-- Dynamic Rows -->
+                  </tbody>
+                </table>
+              </div>
+              <div id="no-subs-state" class="hidden p-8 text-center text-stone-500">
+                No newsletter subscribers found.
+              </div>
+            </div>
+
+            <!-- Contact Messages Table -->
+            <div id="sub-contact-panel" class="hidden bg-white border border-stone-200/90 rounded-2xl overflow-hidden shadow-xs">
+              <!-- Mobile Cards (< 640px) -->
+              <div id="contact-mobile-feed" class="sm:hidden space-y-3 p-3"></div>
+
+              <!-- Desktop Table (>= 640px) -->
+              <div class="hidden sm:block overflow-x-auto">
+                <table class="w-full text-left text-sm text-stone-700 min-w-[640px]">
+                  <thead class="bg-stone-50/90 text-xs uppercase font-semibold text-stone-600 tracking-wider border-b border-stone-200">
+                    <tr>
+                      <th class="py-3.5 px-6">Date</th>
+                      <th class="py-3.5 px-6">Name</th>
+                      <th class="py-3.5 px-6">Email & Phone</th>
+                      <th class="py-3.5 px-6">Message</th>
+                    </tr>
+                  </thead>
+                  <tbody id="contact-tbody" class="divide-y divide-stone-100">
+                    <!-- Dynamic Rows -->
+                  </tbody>
+                </table>
+              </div>
+              <div id="no-contact-state" class="hidden p-8 text-center text-stone-500">
+                No contact inquiries stored yet.
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <!-- Applicant Review Drawer / Modal (Responsive Bottom-Sheet on mobile, Centered Dialog on desktop) -->
+      <div id="detail-modal" class="hidden fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex justify-center items-end sm:items-center p-0 sm:p-4 lg:p-6 overflow-hidden">
+        <div class="bg-white border-t sm:border border-stone-200 w-full max-w-3xl rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[94vh] sm:h-auto sm:max-h-[90vh] my-0 sm:my-auto">
+          <!-- Mobile Pull Handle Indicator -->
+          <div class="sm:hidden w-12 h-1 bg-stone-300 rounded-full mx-auto mt-2.5 mb-1 shrink-0"></div>
+
+          <!-- Modal Header -->
+          <div class="px-4 py-3.5 sm:px-6 sm:py-5 border-b border-stone-200 flex items-start justify-between gap-4 bg-stone-50/95 shrink-0">
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                <h2 id="modal-name" class="text-lg sm:text-2xl font-bold font-display text-stone-900 truncate max-w-md">Applicant Name</h2>
+                <span id="modal-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0">Pending</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-stone-500 mt-1">
+                <span id="modal-meta">Submitted: 2026-09-11</span>
+                <span class="text-stone-300">•</span>
+                <span id="modal-email" class="font-medium text-stone-700 truncate max-w-[200px]">email</span>
+                <span class="text-stone-300">•</span>
+                <span id="modal-phone" class="font-medium text-stone-700">phone</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="modal-close"
+              class="text-stone-400 hover:text-stone-700 p-2 rounded-xl hover:bg-stone-200 transition-colors shrink-0"
+              aria-label="Close dialog"
+            >
+              <span class="material-symbols-outlined text-2xl">close</span>
+            </button>
+          </div>
+
+          <!-- Modal Body (Scrollable, with proper overflow control) -->
+          <div class="p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 flex-1 text-sm text-stone-700 overscroll-contain">
+            <!-- 1. Quick Contacts -->
+            <div class="grid grid-cols-3 gap-2 pt-1">
+              <a id="btn-call" href="#" class="py-2.5 px-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs">
+                <span class="material-symbols-outlined text-base text-amber-600">call</span>
+                <span class="truncate">Call</span>
+              </a>
+              <a id="btn-email" href="#" class="py-2.5 px-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs">
+                <span class="material-symbols-outlined text-base text-blue-600">mail</span>
+                <span class="truncate">Email</span>
+              </a>
+              <a id="btn-whatsapp" href="#" target="_blank" rel="noopener noreferrer" class="py-2.5 px-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs">
+                <span class="material-symbols-outlined text-base text-emerald-600">chat</span>
+                <span class="truncate">WhatsApp</span>
+              </a>
+            </div>
+
+            <!-- 2. Detailed Profile & Occupation Info -->
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div class="bg-stone-50/80 p-4 rounded-xl border border-stone-200">
+                <h4 class="text-xs uppercase font-bold text-[#8e4e00] tracking-wider mb-3 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-base">person</span>
+                  <span>Profile & Locality</span>
+                </h4>
+                <dl class="space-y-2 text-xs">
+                  <div class="flex justify-between gap-2"><dt class="text-stone-500 shrink-0">Date of Birth:</dt><dd id="modal-dob" class="text-stone-900 font-medium text-right">-</dd></div>
+                  <div class="flex justify-between gap-2"><dt class="text-stone-500 shrink-0">Gender:</dt><dd id="modal-gender" class="text-stone-900 font-medium text-right capitalize">-</dd></div>
+                  <div class="flex justify-between gap-2"><dt class="text-stone-500 shrink-0">Area / Locality:</dt><dd id="modal-address" class="text-stone-900 font-medium text-right break-words max-w-[60%]">-</dd></div>
+                  <div class="flex justify-between gap-2"><dt class="text-stone-500 shrink-0">Social Handle:</dt><dd id="modal-social" class="text-stone-900 font-medium text-right break-all max-w-[60%]">-</dd></div>
+                </dl>
+              </div>
+
+              <div class="bg-stone-50/80 p-4 rounded-xl border border-stone-200">
+                <h4 class="text-xs uppercase font-bold text-[#8e4e00] tracking-wider mb-3 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-base">work</span>
+                  <span>Occupation</span>
+                </h4>
+                <dl class="space-y-2 text-xs">
+                  <div class="flex justify-between gap-2"><dt class="text-stone-500 shrink-0">Role Type:</dt><dd id="modal-org-type" class="text-stone-900 font-medium text-right capitalize">-</dd></div>
+                  <div class="pt-1 border-t border-stone-200/60">
+                    <dt class="text-stone-500 mb-1">College or Company:</dt>
+                    <dd id="modal-org" class="text-stone-900 font-medium break-words bg-white p-2.5 rounded-lg border border-stone-200/80">-</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            <!-- 3. Rotaract Experience & Story -->
+            <div class="bg-stone-50/80 p-4 rounded-xl border border-stone-200 space-y-3">
+              <h4 class="text-xs uppercase font-bold text-[#8e4e00] tracking-wider flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-base">auto_awesome</span>
+                <span>Rotaract Experience & Motivation</span>
+              </h4>
+              <div class="text-xs flex items-center gap-2">
+                <span class="text-stone-500">Experience Level:</span>
+                <span id="modal-rotaract-status" class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-stone-200/70 text-stone-800 capitalize">-</span>
+              </div>
+              <div id="modal-why-box" class="text-xs space-y-1">
+                <span class="text-stone-500 block font-medium">Why they want to join RBE:</span>
+                <p id="modal-why" class="text-stone-800 bg-white p-3 rounded-lg border border-stone-200 whitespace-pre-wrap break-words leading-relaxed max-w-full">-</p>
+              </div>
+              <div id="modal-past-box" class="hidden text-xs space-y-2">
+                <div>
+                  <span class="text-stone-500 block font-medium">Previous Club:</span>
+                  <p id="modal-club-name" class="text-stone-900 font-medium mt-0.5 break-words">-</p>
+                </div>
+                <div>
+                  <span class="text-stone-500 block font-medium">Past Journey & Key Achievements:</span>
+                  <p id="modal-journey" class="text-stone-800 bg-white p-3 rounded-lg border border-stone-200 whitespace-pre-wrap break-words leading-relaxed max-w-full mt-0.5">-</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Hobbies & Contributions -->
+            <div class="bg-stone-50/80 p-4 rounded-xl border border-stone-200 space-y-3">
+              <h4 class="text-xs uppercase font-bold text-[#8e4e00] tracking-wider flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-base">interests</span>
+                <span>Interests & Contributions</span>
+              </h4>
+              <div class="text-xs space-y-1">
+                <span class="text-stone-500 block font-medium">Hobbies & Passions:</span>
+                <p id="modal-hobbies" class="text-stone-800 bg-white p-3 rounded-lg border border-stone-200 whitespace-pre-wrap break-words leading-relaxed max-w-full">-</p>
+              </div>
+              <div class="text-xs space-y-1">
+                <span class="text-stone-500 block font-medium">Areas they can help with:</span>
+                <p id="modal-contribute" class="text-stone-900 font-medium break-words">-</p>
+              </div>
+              <div id="modal-contribute-other-box" class="hidden text-xs space-y-1">
+                <span class="text-stone-500 block font-medium">Other contributions:</span>
+                <p id="modal-contribute-other" class="text-stone-800 bg-white p-3 rounded-lg border border-stone-200 break-words leading-relaxed max-w-full">-</p>
+              </div>
+            </div>
+
+            <!-- 5. Reviewer Notes Timeline Section -->
+            <div class="bg-stone-50 border border-stone-200 rounded-xl p-4 sm:p-5 space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs uppercase font-bold text-[#8e4e00] tracking-wider flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-base">forum</span>
+                  <span>Reviewer Remarks & Notes Chain</span>
+                </h4>
+                <span id="modal-notes-count" class="text-[11px] font-semibold text-stone-500 bg-stone-200/60 px-2 py-0.5 rounded-full">0 remarks</span>
+              </div>
+
+              <!-- Structured Notes Timeline Feed -->
+              <div id="modal-notes-list" class="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                <!-- Dynamic Notes Timeline -->
+              </div>
+
+              <!-- Add New Note Form -->
+              <div class="space-y-2 pt-3 border-t border-stone-200">
+                <label for="new-note-input" class="block text-xs font-semibold text-stone-700">Add Review Remark</label>
+                <textarea
+                  id="new-note-input"
+                  rows="2"
+                  placeholder="e.g. Spoke to candidate, college ID verified, recommended for interview…"
+                  class="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 placeholder-stone-400 text-xs focus:outline-none focus:border-[#ff9000] focus:ring-2 focus:ring-[#ff9000]/20 resize-none max-h-52 overflow-y-auto transition-[border-color,box-shadow]"
+                ></textarea>
+                <div class="flex items-center justify-between gap-2 pt-1">
+                  <span class="text-[11px] text-stone-400 hidden sm:inline">Tip: Press <strong>Cmd/Ctrl + Enter</strong> to save note</span>
+                  <button
+                    type="button"
+                    id="modal-add-note-btn"
+                    class="ml-auto px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <span class="material-symbols-outlined text-sm text-[#ff9000]">add_comment</span>
+                    <span>Add Note</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 6. Reviewer Audit Metadata Bar -->
+            <div id="modal-audit-bar" class="flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500 bg-stone-100/80 px-4 py-2.5 rounded-xl border border-stone-200/80">
+              <div class="flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-sm text-stone-400">history</span>
+                <span id="modal-audit-text">Not yet reviewed</span>
+              </div>
+              <span class="text-[11px] text-stone-400 font-medium">Audit Record</span>
+            </div>
+
+            <!-- 7. APPLICATION STATUS DECISION CARD (AT THE VERY BOTTOM) -->
+            <div class="bg-amber-50/50 border border-amber-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-[#8e4e00] text-lg">check_circle</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-amber-950">Update Candidate Status</span>
+              </div>
+
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div id="modal-status-wrapper" class="relative flex-1 min-w-0 sm:min-w-[280px]"></div>
+
+                <button
+                  type="button"
+                  id="modal-update-status-btn"
+                  class="w-full sm:w-auto px-6 py-3 bg-[#ff9000] hover:bg-[#e07f00] text-stone-950 font-bold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-sm shrink-0 cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-base">save</span>
+                  <span>Save Status</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logout Confirmation Modal (Double check dialog) -->
+      <div id="logout-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white border border-stone-200 w-full max-w-sm rounded-2xl shadow-2xl p-6 text-center space-y-4 animate-in fade-in zoom-in duration-150">
+          <div class="inline-flex items-center justify-center h-12 w-12 rounded-full bg-rose-50 border border-rose-200 text-rose-600 shadow-xs">
+            <span class="material-symbols-outlined text-2xl">logout</span>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold font-display text-stone-900">Confirm Sign Out</h3>
+            <p class="text-xs text-stone-500 mt-1">Are you sure you want to log out of the RBE Connect Portal?</p>
+          </div>
+          <div class="flex items-center gap-3 pt-2">
+            <button
+              type="button"
+              id="logout-cancel-btn"
+              class="flex-1 py-2.5 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              id="logout-confirm-btn"
+              class="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors shadow-xs"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toast Notification -->
+      <div id="toast" class="fixed bottom-6 right-6 z-50 hidden max-w-sm p-4 rounded-xl bg-stone-900 border border-stone-800 shadow-2xl text-sm flex items-center gap-3 text-white">
+        <span class="material-symbols-outlined text-[#ff9000]" id="toast-icon">info</span>
+        <span id="toast-message" class="text-stone-200">Message</span>
+      </div>
+    </div>
+
+    <!-- Client Script -->
+    <script is:inline>
+      (function () {
+        const root = document.getElementById("connect-app");
+        const apiUrl = root ? root.getAttribute("data-api") : "";
+
+        // Elements
+        const loadingEl = document.getElementById("app-loading");
+        const authScreen = document.getElementById("auth-screen");
+        const dashboardScreen = document.getElementById("dashboard-screen");
+        const loginForm = document.getElementById("login-form");
+        const loginAlert = document.getElementById("login-alert");
+        const loginBtn = document.getElementById("login-btn");
+        const userDisplay = document.getElementById("user-display");
+        const logoutBtn = document.getElementById("logout-btn");
+        const refreshBtn = document.getElementById("refresh-btn");
+        const refreshIcon = document.getElementById("refresh-icon");
+        const togglePassword = document.getElementById("toggle-password");
+        const loginPassword = document.getElementById("login-password");
+
+        // Logout Modal Elements
+        const logoutModal = document.getElementById("logout-modal");
+        const logoutCancelBtn = document.getElementById("logout-cancel-btn");
+        const logoutConfirmBtn = document.getElementById("logout-confirm-btn");
+
+        // Stats
+        const statTotal = document.getElementById("stat-total");
+        const statPending = document.getElementById("stat-pending");
+        const statReview = document.getElementById("stat-review");
+        const statAccepted = document.getElementById("stat-accepted");
+        const statSubscribers = document.getElementById("stat-subscribers");
+
+        // Tabs
+        const tabBtnApps = document.getElementById("tab-btn-applications");
+        const tabBtnSubs = document.getElementById("tab-btn-subscribers");
+        const badgeApps = document.getElementById("badge-applications");
+        const badgeSubs = document.getElementById("badge-subscribers");
+        const viewApps = document.getElementById("view-applications");
+        const viewSubs = document.getElementById("view-subscribers");
+        const exportCsvBtn = document.getElementById("export-csv-btn");
+
+        // Filter elements
+        const searchInput = document.getElementById("search-input");
+        const appsTbody = document.getElementById("applications-tbody");
+        const appsMobileFeed = document.getElementById("applications-mobile-feed");
+        const noAppsState = document.getElementById("no-apps-state");
+
+        // Custom Select Instances
+        let filterStatusSelect = null;
+        let filterOccupationSelect = null;
+        let filterExperienceSelect = null;
+        let modalStatusSelect = null;
+
+        // Subscribers sub-toggle
+        const subToggleNews = document.getElementById("sub-toggle-news");
+        const subToggleContact = document.getElementById("sub-toggle-contact");
+        const subNewsPanel = document.getElementById("sub-news-panel");
+        const subContactPanel = document.getElementById("sub-contact-panel");
+        const subNewsCount = document.getElementById("sub-news-count");
+        const subContactCount = document.getElementById("sub-contact-count");
+        const subscribersTbody = document.getElementById("subscribers-tbody");
+        const contactTbody = document.getElementById("contact-tbody");
+        const subscribersMobileFeed = document.getElementById("subscribers-mobile-feed");
+        const contactMobileFeed = document.getElementById("contact-mobile-feed");
+        const noSubsState = document.getElementById("no-subs-state");
+        const noContactState = document.getElementById("no-contact-state");
+
+        // Modal elements
+        const detailModal = document.getElementById("detail-modal");
+        const modalClose = document.getElementById("modal-close");
+        const modalName = document.getElementById("modal-name");
+        const modalStatusBadge = document.getElementById("modal-status-badge");
+        const modalMeta = document.getElementById("modal-meta");
+        const modalPhone = document.getElementById("modal-phone");
+        const modalEmail = document.getElementById("modal-email");
+        const btnCall = document.getElementById("btn-call");
+        const btnEmail = document.getElementById("btn-email");
+        const btnWhatsapp = document.getElementById("btn-whatsapp");
+        const modalUpdateStatusBtn = document.getElementById("modal-update-status-btn");
+        const modalDob = document.getElementById("modal-dob");
+        const modalGender = document.getElementById("modal-gender");
+        const modalAddress = document.getElementById("modal-address");
+        const modalSocial = document.getElementById("modal-social");
+        const modalOrgType = document.getElementById("modal-org-type");
+        const modalOrg = document.getElementById("modal-org");
+        const modalRotaractStatus = document.getElementById("modal-rotaract-status");
+        const modalWhy = document.getElementById("modal-why");
+        const modalWhyBox = document.getElementById("modal-why-box");
+        const modalPastBox = document.getElementById("modal-past-box");
+        const modalClubName = document.getElementById("modal-club-name");
+        const modalJourney = document.getElementById("modal-journey");
+        const modalHobbies = document.getElementById("modal-hobbies");
+        const modalContribute = document.getElementById("modal-contribute");
+        const modalContributeOtherBox = document.getElementById("modal-contribute-other-box");
+        const modalContributeOther = document.getElementById("modal-contribute-other");
+        const modalNotesList = document.getElementById("modal-notes-list");
+        const modalNotesCount = document.getElementById("modal-notes-count");
+        const modalAuditText = document.getElementById("modal-audit-text");
+        const newNoteInput = document.getElementById("new-note-input");
+        const modalAddNoteBtn = document.getElementById("modal-add-note-btn");
+
+        // State
+        let currentToken = sessionStorage.getItem("rbe_connect_token") || "";
+        let currentUser = JSON.parse(sessionStorage.getItem("rbe_connect_user") || "null");
+        let activeTab = "applications"; // "applications" | "subscribers"
+        let activeSubTab = "news"; // "news" | "contact"
+        let rawData = { applications: [], subscribers: [], contactMessages: [] };
+        let currentModalItem = null;
+
+        // Custom Accessible Styled Select Component
+        function createCustomSelect({ container, defaultValue, options, onChange, direction = "down" }) {
+          if (!container) return null;
+          let selectedValue = defaultValue || (options[0] ? options[0].value : "");
+          let isOpen = false;
+
+          container.innerHTML = "";
+          container.classList.add("relative", "select-none");
+
+          // Trigger Button
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className =
+            "w-full flex items-center justify-between px-3.5 py-2.5 bg-white hover:bg-stone-50/90 border border-stone-300 hover:border-stone-400 rounded-xl text-stone-900 text-sm font-medium focus:outline-none focus:border-[#ff9000] focus:ring-2 focus:ring-[#ff9000]/20 shadow-2xs transition-all cursor-pointer";
+          button.setAttribute("aria-haspopup", "listbox");
+          button.setAttribute("aria-expanded", "false");
+
+          const leftWrap = document.createElement("div");
+          leftWrap.className = "flex items-center gap-2.5 min-w-0 truncate";
+
+          const dotEl = document.createElement("span");
+          dotEl.className = "h-2.5 w-2.5 rounded-full shrink-0 hidden";
+
+          const labelEl = document.createElement("span");
+          labelEl.className = "truncate text-stone-900 font-semibold";
+
+          leftWrap.appendChild(dotEl);
+          leftWrap.appendChild(labelEl);
+
+          const chevron = document.createElement("span");
+          chevron.className =
+            "material-symbols-outlined text-stone-400 text-xl transition-transform duration-200 pointer-events-none shrink-0 ml-2";
+          chevron.textContent = direction === "up" ? "keyboard_arrow_up" : "expand_more";
+
+          button.appendChild(leftWrap);
+          button.appendChild(chevron);
+
+          // Floating Dropdown Menu
+          const menu = document.createElement("div");
+          if (direction === "up") {
+            menu.className =
+              "absolute left-0 bottom-full mb-2 z-50 bg-white border border-stone-200/90 rounded-2xl shadow-2xl p-1.5 max-h-72 overflow-y-auto hidden w-full sm:min-w-[280px]";
+          } else {
+            menu.className =
+              "absolute left-0 right-0 top-full mt-1.5 z-40 bg-white border border-stone-200/90 rounded-xl shadow-xl p-1.5 max-h-60 overflow-y-auto hidden";
+          }
+          menu.setAttribute("role", "listbox");
+
+          function updateDisplay() {
+            const opt = options.find((o) => o.value === selectedValue) || options[0];
+            if (opt) {
+              labelEl.textContent = opt.label;
+              if (opt.dot) {
+                dotEl.className = "h-2.5 w-2.5 rounded-full shrink-0 " + opt.dot;
+                dotEl.classList.remove("hidden");
+              } else {
+                dotEl.classList.add("hidden");
+              }
+            }
+            const allItems = menu.querySelectorAll("[role='option']");
+            allItems.forEach((itemEl) => {
+              const val = itemEl.getAttribute("data-value");
+              const isSelected = val === selectedValue;
+              const chk = itemEl.querySelector(".item-check");
+              if (isSelected) {
+                itemEl.classList.add("bg-amber-50/90", "text-[#8e4e00]");
+                itemEl.classList.remove("text-stone-700", "hover:bg-stone-50");
+                itemEl.setAttribute("aria-selected", "true");
+                if (chk) chk.classList.remove("hidden");
+              } else {
+                itemEl.classList.remove("bg-amber-50/90", "text-[#8e4e00]");
+                itemEl.classList.add("text-stone-700", "hover:bg-stone-50");
+                itemEl.setAttribute("aria-selected", "false");
+                if (chk) chk.classList.add("hidden");
+              }
+            });
+          }
+
+          options.forEach((opt) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.setAttribute("role", "option");
+            item.setAttribute("data-value", opt.value);
+            item.className =
+              "w-full text-left px-3 py-2 text-xs sm:text-sm font-medium text-stone-700 hover:bg-stone-50 hover:text-stone-950 flex items-center justify-between cursor-pointer transition-colors rounded-xl";
+
+            const itemLeft = document.createElement("div");
+            itemLeft.className = "flex items-center gap-2.5 min-w-0";
+
+            if (opt.dot) {
+              const itemDot = document.createElement("span");
+              itemDot.className = "h-2.5 w-2.5 rounded-full shrink-0 " + opt.dot;
+              itemLeft.appendChild(itemDot);
+            }
+
+            const textWrap = document.createElement("div");
+            textWrap.className = "min-w-0 flex flex-col";
+
+            const itemText = document.createElement("span");
+            itemText.className = "font-semibold text-stone-900 whitespace-nowrap leading-snug";
+            itemText.textContent = opt.label;
+            textWrap.appendChild(itemText);
+
+            if (opt.desc) {
+              const itemDesc = document.createElement("span");
+              itemDesc.className = "text-[11px] text-stone-400 font-normal leading-tight whitespace-nowrap";
+              itemDesc.textContent = opt.desc;
+              textWrap.appendChild(itemDesc);
+            }
+
+            itemLeft.appendChild(textWrap);
+
+            const checkIcon = document.createElement("span");
+            checkIcon.className =
+              "material-symbols-outlined text-base text-[#ff9000] shrink-0 item-check hidden ml-3";
+            checkIcon.textContent = "check";
+
+            item.appendChild(itemLeft);
+            item.appendChild(checkIcon);
+
+            item.addEventListener("click", (e) => {
+              e.stopPropagation();
+              selectedValue = opt.value;
+              updateDisplay();
+              closeMenu();
+              if (typeof onChange === "function") {
+                onChange(selectedValue);
+              }
+            });
+
+            menu.appendChild(item);
+          });
+
+          function openMenu() {
+            // Close any other open custom dropdowns
+            document.querySelectorAll(".custom-select-menu").forEach((m) => {
+              if (m !== menu) {
+                m.classList.add("hidden");
+                const pBtn = m.previousElementSibling;
+                if (pBtn) {
+                  pBtn.setAttribute("aria-expanded", "false");
+                  const ic = pBtn.querySelector(".material-symbols-outlined:last-child");
+                  if (ic) ic.classList.remove("rotate-180");
+                }
+              }
+            });
+
+            menu.classList.remove("hidden");
+            chevron.classList.add("rotate-180");
+            button.setAttribute("aria-expanded", "true");
+            isOpen = true;
+          }
+
+          function closeMenu() {
+            menu.classList.add("hidden");
+            chevron.classList.remove("rotate-180");
+            button.setAttribute("aria-expanded", "false");
+            isOpen = false;
+          }
+
+          button.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (isOpen) {
+              closeMenu();
+            } else {
+              openMenu();
+            }
+          });
+
+          document.addEventListener("click", (e) => {
+            if (!container.contains(e.target) && isOpen) {
+              closeMenu();
+            }
+          });
+
+          document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && isOpen) {
+              closeMenu();
+            }
+          });
+
+          menu.classList.add("custom-select-menu");
+          container.appendChild(button);
+          container.appendChild(menu);
+
+          updateDisplay();
+
+          return {
+            getValue: () => selectedValue,
+            setValue: (val) => {
+              selectedValue = val;
+              updateDisplay();
+            },
+          };
+        }
+
+        function initCustomSelects() {
+          const statusContainer = document.getElementById("filter-status-wrapper");
+          if (statusContainer && !filterStatusSelect) {
+            filterStatusSelect = createCustomSelect({
+              container: statusContainer,
+              defaultValue: "ALL",
+              direction: "down",
+              options: [
+                { value: "ALL", label: "All Statuses" },
+                { value: "Pending", label: "Pending", dot: "bg-amber-400" },
+                { value: "Under Review", label: "Under Review", dot: "bg-blue-500" },
+                { value: "Contacted", label: "Contacted", dot: "bg-blue-500" },
+                { value: "Accepted", label: "Accepted", dot: "bg-emerald-500" },
+                { value: "Waitlisted", label: "Waitlisted", dot: "bg-purple-500" },
+                { value: "Rejected", label: "Rejected", dot: "bg-rose-500" },
+              ],
+              onChange: () => renderApplications(),
+            });
+          }
+
+          const occContainer = document.getElementById("filter-occupation-wrapper");
+          if (occContainer && !filterOccupationSelect) {
+            filterOccupationSelect = createCustomSelect({
+              container: occContainer,
+              defaultValue: "ALL",
+              direction: "down",
+              options: [
+                { value: "ALL", label: "All Occupations" },
+                { value: "student", label: "Student" },
+                { value: "professional", label: "Professional" },
+              ],
+              onChange: () => renderApplications(),
+            });
+          }
+
+          const expContainer = document.getElementById("filter-experience-wrapper");
+          if (expContainer && !filterExperienceSelect) {
+            filterExperienceSelect = createCustomSelect({
+              container: expContainer,
+              defaultValue: "ALL",
+              direction: "down",
+              options: [
+                { value: "ALL", label: "All Rotaract Experience" },
+                { value: "new", label: "New to Rotaract" },
+                { value: "experienced", label: "Experienced Rotaractor" },
+              ],
+              onChange: () => renderApplications(),
+            });
+          }
+
+          const modalStatusContainer = document.getElementById("modal-status-wrapper");
+          if (modalStatusContainer && !modalStatusSelect) {
+            modalStatusSelect = createCustomSelect({
+              container: modalStatusContainer,
+              defaultValue: "Pending",
+              direction: "up",
+              options: [
+                { value: "Pending", label: "Pending", desc: "Awaiting initial review", dot: "bg-amber-400" },
+                { value: "Under Review", label: "Under Review", desc: "Screening candidate profile", dot: "bg-blue-500" },
+                { value: "Contacted", label: "Contacted", desc: "Reached out via call or WhatsApp", dot: "bg-blue-500" },
+                { value: "Accepted", label: "Accepted", desc: "Approved for club induction", dot: "bg-emerald-500" },
+                { value: "Waitlisted", label: "Waitlisted", desc: "Placed on hold for next cycle", dot: "bg-purple-500" },
+                { value: "Rejected", label: "Rejected", desc: "Not moving forward", dot: "bg-rose-500" },
+              ],
+              onChange: () => {},
+            });
+          }
+        }
+
+        // Descending Date Sorting Helper (Latest submission on top)
+        function parseTimestampEpoch(ts) {
+          if (!ts) return 0;
+          const s = String(ts).trim();
+          const iso = s.replace(" ", "T");
+          const t = Date.parse(iso);
+          return isNaN(t) ? 0 : t;
+        }
+
+        function sortDescending(list) {
+          return (list || []).slice().sort((a, b) => {
+            const timeA = parseTimestampEpoch(a.timestamp);
+            const timeB = parseTimestampEpoch(b.timestamp);
+            if (timeA !== timeB) return timeB - timeA;
+            return (b.rowIndex || 0) - (a.rowIndex || 0);
+          });
+        }
+
+        // Toast helper
+        function showToast(msg, icon) {
+          const toast = document.getElementById("toast");
+          const toastMsg = document.getElementById("toast-message");
+          const toastIcon = document.getElementById("toast-icon");
+          if (!toast) return;
+          toastMsg.textContent = msg;
+          toastIcon.textContent = icon || "info";
+          toast.classList.remove("hidden");
+          setTimeout(() => toast.classList.add("hidden"), 4000);
+        }
+
+        // Toggle password view
+        if (togglePassword && loginPassword) {
+          togglePassword.addEventListener("click", () => {
+            const isPass = loginPassword.type === "password";
+            loginPassword.type = isPass ? "text" : "password";
+            togglePassword.innerHTML = `<span class="material-symbols-outlined text-xl">${isPass ? "visibility_off" : "visibility"}</span>`;
+          });
+        }
+
+        // API Post Helper
+        async function apiPost(payload) {
+          if (!apiUrl) {
+            throw new Error("PUBLIC_FORMS_API_URL is not configured.");
+          }
+          const res = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload),
+            redirect: "follow",
+          });
+          const data = await res.json();
+          return data;
+        }
+
+        // Status badge styling helper
+        function getStatusBadge(status) {
+          const s = (status || "Pending").toLowerCase();
+          if (s === "accepted") {
+            return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">Accepted</span>';
+          }
+          if (s === "under review" || s === "contacted") {
+            return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200">' + status + '</span>';
+          }
+          if (s === "waitlisted") {
+            return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-800 border border-purple-200">Waitlisted</span>';
+          }
+          if (s === "rejected") {
+            return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">Rejected</span>';
+          }
+          return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300">Pending</span>';
+        }
+
+        // Initialize / Session check with Stale-While-Revalidate caching
+        async function init() {
+          initCustomSelects();
+
+          if (currentToken && currentUser) {
+            // 1. Stale-while-revalidate: display cached data instantly (<15ms)
+            const cached = sessionStorage.getItem("rbe_connect_data_cache");
+            if (cached) {
+              try {
+                const parsed = JSON.parse(cached);
+                rawData = {
+                  applications: sortDescending(parsed.applications || []),
+                  subscribers: sortDescending(parsed.subscribers || []),
+                  contactMessages: sortDescending(parsed.contactMessages || []),
+                };
+                showDashboard();
+                updateMetrics();
+                renderApplications();
+                renderSubscribers();
+              } catch (e) {}
+            }
+
+            // 2. Validate session with API and quietly revalidate
+            try {
+              const res = await apiPost({ action: "verifySession", token: currentToken });
+              if (res.ok && res.user) {
+                currentUser = res.user;
+                showDashboard();
+                await fetchData(Boolean(cached), false); // silent background fetch if cache was shown
+                return;
+              }
+            } catch (e) {
+              console.warn("Session check failed:", e);
+            }
+          }
+          showAuth();
+        }
+
+        function showAuth() {
+          loadingEl.classList.add("hidden");
+          dashboardScreen.classList.add("hidden");
+          authScreen.classList.remove("hidden");
+        }
+
+        function showDashboard() {
+          loadingEl.classList.add("hidden");
+          authScreen.classList.add("hidden");
+          dashboardScreen.classList.remove("hidden");
+          if (userDisplay && currentUser) {
+            userDisplay.textContent = currentUser.name + (currentUser.role ? " (" + currentUser.role + ")" : "");
+          }
+        }
+
+        // Login Submit
+        loginForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          loginAlert.classList.add("hidden");
+          loginBtn.disabled = true;
+          loginBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> Authenticating…';
+
+          const email = document.getElementById("login-email").value.trim();
+          const password = document.getElementById("login-password").value;
+
+          try {
+            const res = await apiPost({ action: "login", email, password });
+            if (res.ok && res.token) {
+              currentToken = res.token;
+              currentUser = res.user;
+              sessionStorage.setItem("rbe_connect_token", currentToken);
+              sessionStorage.setItem("rbe_connect_user", JSON.stringify(currentUser));
+              showDashboard();
+              await fetchData(false, true); // Fresh fetch after login
+            } else {
+              loginAlert.className = "mb-6 p-4 rounded-xl text-sm border bg-rose-50 border-rose-200 text-rose-800 flex items-start gap-3";
+              loginAlert.innerHTML = '<span class="material-symbols-outlined text-lg mt-0.5">error</span><div>' + (res.error || "Authentication failed. Check credentials.") + '</div>';
+              loginAlert.classList.remove("hidden");
+            }
+          } catch (err) {
+            loginAlert.className = "mb-6 p-4 rounded-xl text-sm border bg-rose-50 border-rose-200 text-rose-800 flex items-start gap-3";
+            loginAlert.innerHTML = '<span class="material-symbols-outlined text-lg mt-0.5">error</span><div>' + err.message + '</div>';
+            loginAlert.classList.remove("hidden");
+          } finally {
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = '<span>Sign in to Dashboard</span><span class="material-symbols-outlined text-lg">arrow_forward</span>';
+          }
+        });
+
+        // Logout with Double Confirmation Modal
+        logoutBtn.addEventListener("click", () => {
+          logoutModal.classList.remove("hidden");
+        });
+
+        logoutCancelBtn.addEventListener("click", () => {
+          logoutModal.classList.add("hidden");
+        });
+
+        logoutConfirmBtn.addEventListener("click", () => {
+          logoutModal.classList.add("hidden");
+          sessionStorage.removeItem("rbe_connect_token");
+          sessionStorage.removeItem("rbe_connect_user");
+          sessionStorage.removeItem("rbe_connect_data_cache");
+          currentToken = "";
+          currentUser = null;
+          rawData = { applications: [], subscribers: [], contactMessages: [] };
+          showAuth();
+          showToast("Logged out successfully.", "logout");
+        });
+
+        logoutModal.addEventListener("click", (e) => {
+          if (e.target === logoutModal) {
+            logoutModal.classList.add("hidden");
+          }
+        });
+
+        // Refresh Data
+        refreshBtn.addEventListener("click", async () => {
+          await fetchData(false, true); // bypassCache = true on manual refresh
+        });
+
+        // Fetch Data from API with performance caching
+        async function fetchData(isBackground = false, bypassCache = false) {
+          if (!isBackground && refreshIcon) {
+            refreshIcon.classList.add("animate-spin");
+          }
+          try {
+            const res = await apiPost({
+              action: "getData",
+              token: currentToken,
+              bypassCache: Boolean(bypassCache),
+            });
+            if (res.ok) {
+              rawData = {
+                applications: sortDescending(res.applications || []),
+                subscribers: sortDescending(res.subscribers || []),
+                contactMessages: sortDescending(res.contactMessages || []),
+              };
+              try {
+                sessionStorage.setItem("rbe_connect_data_cache", JSON.stringify(rawData));
+              } catch (e) {}
+              updateMetrics();
+              renderApplications();
+              renderSubscribers();
+              if (!isBackground) {
+                showToast("Data refreshed.", "done");
+              }
+            } else if (res.status === 401) {
+              sessionStorage.removeItem("rbe_connect_token");
+              sessionStorage.removeItem("rbe_connect_data_cache");
+              showAuth();
+              showToast("Session expired. Please log in again.", "lock");
+            }
+          } catch (err) {
+            console.error("Failed to fetch data:", err);
+            if (!isBackground) {
+              showToast("Failed to fetch data: " + err.message, "error");
+            }
+          } finally {
+            if (!isBackground && refreshIcon) {
+              setTimeout(() => refreshIcon.classList.remove("animate-spin"), 500);
+            }
+          }
+        }
+
+        // Metrics Calculation
+        function updateMetrics() {
+          const apps = rawData.applications || [];
+          statTotal.textContent = String(apps.length);
+          badgeApps.textContent = String(apps.length);
+
+          const pending = apps.filter((a) => (a.status || "Pending").toLowerCase() === "pending").length;
+          const inReview = apps.filter((a) => {
+            const s = (a.status || "").toLowerCase();
+            return s === "under review" || s === "contacted";
+          }).length;
+          const accepted = apps.filter((a) => (a.status || "").toLowerCase() === "accepted").length;
+
+          statPending.textContent = String(pending);
+          statReview.textContent = String(inReview);
+          statAccepted.textContent = String(accepted);
+
+          const subs = rawData.subscribers || [];
+          statSubscribers.textContent = String(subs.length);
+          subNewsCount.textContent = String(subs.length);
+          badgeSubs.textContent = String(subs.length + (rawData.contactMessages || []).length);
+          subContactCount.textContent = String((rawData.contactMessages || []).length);
+        }
+
+        // Format note timestamp cleanly (e.g., "11 Sep 2026, 20:07")
+        function formatNoteTime(ts) {
+          if (!ts) return "";
+          try {
+            const parts = ts.trim().split(" ");
+            if (parts.length >= 2) {
+              const dateParts = parts[0].split("-");
+              if (dateParts.length === 3) {
+                const year = dateParts[0];
+                const monthIndex = parseInt(dateParts[1], 10) - 1;
+                const day = parseInt(dateParts[2], 10);
+                const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                const month = months[monthIndex] || dateParts[1];
+                return `${day} ${month} ${year}, ${parts[1]}`;
+              }
+            }
+          } catch (e) {}
+          return ts;
+        }
+
+        // Parse structured notes chain (supports pipe and hyphen formats)
+        function parseNotesChain(notesStr) {
+          if (!notesStr || !notesStr.trim()) return [];
+          const rawEntries = notesStr.split(/\n\n+/).filter(Boolean);
+          return rawEntries.map((entry) => {
+            const match =
+              entry.match(/^\[(\d{4}[-/]\d{2}[-/]\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?)\s*(?:\||\s+-\s+)\s*([^\]]+)\]:\s*([\s\S]*)$/) ||
+              entry.match(/^\[([^\]|]+?)\s*\|\s*([^\]]+?)\]:\s*([\s\S]*)$/) ||
+              entry.match(/^\[([^\]]+)\]:\s*([\s\S]*)$/);
+            if (match) {
+              if (match.length >= 4) {
+                return {
+                  timestamp: match[1].trim(),
+                  author: match[2].trim(),
+                  text: match[3].trim(),
+                };
+              } else {
+                return {
+                  timestamp: "",
+                  author: match[1].trim(),
+                  text: match[2].trim(),
+                };
+              }
+            }
+            return {
+              timestamp: "",
+              author: "Reviewer",
+              text: entry.trim(),
+            };
+          });
+        }
+
+        // Applications Rendering with Filters & Reviewer Attribution
+        function renderApplications() {
+          if (appsTbody) appsTbody.innerHTML = "";
+          if (appsMobileFeed) appsMobileFeed.innerHTML = "";
+
+          const query = (searchInput.value || "").toLowerCase().trim();
+          const statusVal = filterStatusSelect ? filterStatusSelect.getValue() : "ALL";
+          const occVal = filterOccupationSelect ? filterOccupationSelect.getValue() : "ALL";
+          const expVal = filterExperienceSelect ? filterExperienceSelect.getValue() : "ALL";
+
+          const filtered = (rawData.applications || []).filter((item) => {
+            if (statusVal !== "ALL" && (item.status || "Pending") !== statusVal) return false;
+            if (occVal !== "ALL" && (item.organizationType || "").toLowerCase() !== occVal) return false;
+            if (expVal !== "ALL" && (item.rotaractStatus || "").toLowerCase() !== expVal) return false;
+
+            if (query) {
+              const fullStr = [
+                item.name,
+                item.email,
+                item.phone,
+                item.organization,
+                item.address,
+                item.why,
+                item.lastReviewer,
+                item.notes,
+              ].join(" ").toLowerCase();
+              if (!fullStr.includes(query)) return false;
+            }
+            return true;
+          });
+
+          if (filtered.length === 0) {
+            noAppsState.classList.remove("hidden");
+            return;
+          }
+          noAppsState.classList.add("hidden");
+
+          filtered.forEach((item) => {
+            // Latest note preview
+            const notesArr = parseNotesChain(item.notes);
+            const latestNote = notesArr.length > 0 ? notesArr[notesArr.length - 1] : null;
+
+            // 1. Render Desktop Table Row (>= 640px)
+            if (appsTbody) {
+              const tr = document.createElement("tr");
+              tr.className = "hover:bg-amber-50/40 transition-colors";
+              tr.innerHTML = `
+                <td class="py-4 px-4 sm:px-6 min-w-[200px]">
+                  <div class="font-semibold text-stone-900">${escapeHtml(item.name)}</div>
+                  <div class="text-xs text-stone-500 mt-0.5 flex flex-wrap items-center gap-2">
+                    <a href="mailto:${escapeHtml(item.email)}" class="hover:text-[#8e4e00] hover:underline">${escapeHtml(item.email)}</a>
+                    <span>•</span>
+                    <a href="tel:${escapeHtml(item.phone)}" class="hover:text-[#8e4e00] hover:underline">${escapeHtml(item.phone)}</a>
+                  </div>
+                  <div class="text-[11px] text-stone-400 mt-1">${escapeHtml(item.timestamp || "")}</div>
+                </td>
+                <td class="py-4 px-4 hidden md:table-cell max-w-[160px]">
+                  <span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-stone-100 text-stone-700 border border-stone-200 capitalize">
+                    ${escapeHtml(item.organizationType || "-")}
+                  </span>
+                  <div class="text-xs text-stone-600 mt-1 truncate" title="${escapeHtml(item.organization || "-")}">${escapeHtml(item.organization || "-")}</div>
+                </td>
+                <td class="py-4 px-4 hidden lg:table-cell whitespace-nowrap">
+                  <span class="text-xs ${item.rotaractStatus === "experienced" ? "text-amber-800 font-semibold" : "text-stone-500"} capitalize">
+                    ${escapeHtml(item.rotaractStatus || "new")}
+                  </span>
+                </td>
+                <td class="py-4 px-4 whitespace-nowrap">
+                  ${getStatusBadge(item.status)}
+                </td>
+                <td class="py-4 px-4 hidden sm:table-cell max-w-[240px]">
+                  <div class="text-xs text-stone-700 truncate font-medium" title="${latestNote ? escapeHtml(latestNote.text) : ''}">
+                    ${latestNote ? escapeHtml(latestNote.text) : '<span class="text-stone-400 italic font-normal">No remarks yet</span>'}
+                  </div>
+                  ${item.lastReviewer ? `
+                    <div class="text-[11px] text-stone-400 mt-1 truncate flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[12px] text-amber-700">person</span>
+                      <span>${escapeHtml(item.lastReviewer)}</span>
+                      ${item.lastReviewedAt ? `<span>• ${escapeHtml(item.lastReviewedAt)}</span>` : ''}
+                    </div>
+                  ` : ''}
+                </td>
+                <td class="py-4 px-4 text-right whitespace-nowrap">
+                  <button
+                    type="button"
+                    data-row="${item.rowIndex}"
+                    class="btn-review px-3.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    Review
+                  </button>
+                </td>
+              `;
+              const btnRev = tr.querySelector(".btn-review");
+              if (btnRev) btnRev.addEventListener("click", () => openModal(item));
+              appsTbody.appendChild(tr);
+            }
+
+            // 2. Render Mobile Feed Card (< 640px)
+            if (appsMobileFeed) {
+              const card = document.createElement("div");
+              card.className = "bg-white border border-stone-200/90 rounded-2xl p-4 shadow-xs space-y-3";
+
+              const cleanPhone = (item.phone || "").replace(/\D/g, "");
+              const waPhone = cleanPhone.length === 10 ? "91" + cleanPhone : cleanPhone;
+
+              card.innerHTML = `
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0 flex-1">
+                    <h3 class="font-bold text-base text-stone-900 leading-tight truncate">${escapeHtml(item.name)}</h3>
+                    <div class="text-[11px] text-stone-400 mt-0.5">${escapeHtml(item.timestamp || "Recent")}</div>
+                  </div>
+                  <div class="shrink-0">
+                    ${getStatusBadge(item.status)}
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                  <span class="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-medium capitalize border border-stone-200/80">
+                    ${escapeHtml(item.organizationType || "Member")}
+                  </span>
+                  ${item.organization ? `<span class="text-stone-500 truncate max-w-[170px]">• ${escapeHtml(item.organization)}</span>` : ""}
+                  <span class="ml-auto px-2 py-0.5 rounded-md ${item.rotaractStatus === "experienced" ? "bg-amber-100 text-amber-900 font-semibold" : "bg-stone-50 text-stone-500"} text-[11px] capitalize">
+                    ${escapeHtml(item.rotaractStatus || "new")}
+                  </span>
+                </div>
+
+                ${latestNote ? `
+                  <div class="bg-amber-50/50 border border-amber-200/60 rounded-xl p-2.5 text-xs space-y-1">
+                    <div class="text-stone-700 leading-relaxed font-normal line-clamp-2">${escapeHtml(latestNote.text)}</div>
+                    <div class="flex items-center gap-1 text-[11px] text-stone-400">
+                      <span class="material-symbols-outlined text-[12px] text-amber-700">person</span>
+                      <span class="font-medium text-stone-600">${escapeHtml(latestNote.author)}</span>
+                      ${latestNote.timestamp ? `<span>• ${escapeHtml(formatNoteTime(latestNote.timestamp))}</span>` : ""}
+                    </div>
+                  </div>
+                ` : `
+                  <div class="text-[11px] text-stone-400 italic bg-stone-50 rounded-lg p-2 border border-stone-200/60">
+                    No reviewer remarks yet
+                  </div>
+                `}
+
+                <div class="pt-2 border-t border-stone-100 flex items-center gap-2">
+                  ${item.phone ? `
+                    <a href="tel:${escapeHtml(item.phone)}" title="Call" class="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 flex items-center justify-center shrink-0">
+                      <span class="material-symbols-outlined text-base text-amber-600">call</span>
+                    </a>
+                  ` : ""}
+                  ${waPhone ? `
+                    <a href="https://wa.me/${waPhone}" target="_blank" rel="noopener noreferrer" title="WhatsApp" class="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center shrink-0">
+                      <span class="material-symbols-outlined text-base text-emerald-600">chat</span>
+                    </a>
+                  ` : ""}
+                  ${item.email ? `
+                    <a href="mailto:${escapeHtml(item.email)}" title="Email" class="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 flex items-center justify-center shrink-0">
+                      <span class="material-symbols-outlined text-base text-blue-600">mail</span>
+                    </a>
+                  ` : ""}
+                  <button
+                    type="button"
+                    class="btn-review-mobile flex-1 py-2 px-3 rounded-xl bg-[#ff9000] hover:bg-[#e07f00] text-stone-950 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                  >
+                    <span>Review</span>
+                    <span class="material-symbols-outlined text-base">arrow_forward</span>
+                  </button>
+                </div>
+              `;
+              const btnRevMob = card.querySelector(".btn-review-mobile");
+              if (btnRevMob) btnRevMob.addEventListener("click", () => openModal(item));
+              appsMobileFeed.appendChild(card);
+            }
+          });
+        }
+
+        // Subscribers & Messages Rendering
+        function renderSubscribers() {
+          if (subscribersTbody) subscribersTbody.innerHTML = "";
+          if (contactTbody) contactTbody.innerHTML = "";
+          if (subscribersMobileFeed) subscribersMobileFeed.innerHTML = "";
+          if (contactMobileFeed) contactMobileFeed.innerHTML = "";
+
+          const subs = rawData.subscribers || [];
+          if (subs.length === 0) {
+            noSubsState.classList.remove("hidden");
+          } else {
+            noSubsState.classList.add("hidden");
+            subs.forEach((s) => {
+              // Desktop Row
+              if (subscribersTbody) {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-amber-50/40 transition-colors";
+                tr.innerHTML = `
+                  <td class="py-3.5 px-6 text-xs text-stone-500">${escapeHtml(s.timestamp)}</td>
+                  <td class="py-3.5 px-6 font-medium text-stone-900">${escapeHtml(s.email)}</td>
+                  <td class="py-3.5 px-6 text-right">
+                    <a href="mailto:${escapeHtml(s.email)}" class="px-2.5 py-1 rounded bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs border border-stone-200 transition-colors inline-flex items-center gap-1">
+                      <span class="material-symbols-outlined text-sm">mail</span>
+                      <span>Email</span>
+                    </a>
+                  </td>
+                `;
+                subscribersTbody.appendChild(tr);
+              }
+
+              // Mobile Card
+              if (subscribersMobileFeed) {
+                const card = document.createElement("div");
+                card.className = "bg-white border border-stone-200/90 rounded-xl p-3.5 shadow-2xs flex items-center justify-between gap-3";
+                card.innerHTML = `
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold text-stone-900 text-xs sm:text-sm truncate">${escapeHtml(s.email)}</div>
+                    <div class="text-[11px] text-stone-400 mt-0.5">${escapeHtml(s.timestamp)}</div>
+                  </div>
+                  <a href="mailto:${escapeHtml(s.email)}" class="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold border border-stone-200 transition-colors inline-flex items-center gap-1 shrink-0">
+                    <span class="material-symbols-outlined text-sm text-blue-600">mail</span>
+                    <span>Email</span>
+                  </a>
+                `;
+                subscribersMobileFeed.appendChild(card);
+              }
+            });
+          }
+
+          const contacts = rawData.contactMessages || [];
+          if (contacts.length === 0) {
+            noContactState.classList.remove("hidden");
+          } else {
+            noContactState.classList.add("hidden");
+            contacts.forEach((c) => {
+              // Desktop Row
+              if (contactTbody) {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-amber-50/40 transition-colors";
+                tr.innerHTML = `
+                  <td class="py-3.5 px-6 text-xs text-stone-500 whitespace-nowrap">${escapeHtml(c.timestamp)}</td>
+                  <td class="py-3.5 px-6 font-semibold text-stone-900">${escapeHtml(c.name)}</td>
+                  <td class="py-3.5 px-6 text-xs text-stone-600">
+                    <div class="font-medium text-stone-800">${escapeHtml(c.email)}</div>
+                    <div class="text-stone-500">${escapeHtml(c.phone)}</div>
+                  </td>
+                  <td class="py-3.5 px-6 text-xs text-stone-700 max-w-md break-words">${escapeHtml(c.message)}</td>
+                `;
+                contactTbody.appendChild(tr);
+              }
+
+              // Mobile Card
+              if (contactMobileFeed) {
+                const card = document.createElement("div");
+                card.className = "bg-white border border-stone-200/90 rounded-2xl p-4 shadow-2xs space-y-2.5";
+                card.innerHTML = `
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="font-bold text-stone-900 text-sm">${escapeHtml(c.name)}</div>
+                    <div class="text-[11px] text-stone-400 whitespace-nowrap">${escapeHtml(c.timestamp)}</div>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <a href="mailto:${escapeHtml(c.email)}" class="text-blue-700 hover:underline font-medium">${escapeHtml(c.email)}</a>
+                    ${c.phone ? `<span class="text-stone-300">•</span><a href="tel:${escapeHtml(c.phone)}" class="text-amber-800 hover:underline font-medium">${escapeHtml(c.phone)}</a>` : ""}
+                  </div>
+                  <div class="text-xs text-stone-700 bg-stone-50 p-3 rounded-xl border border-stone-200/80 leading-relaxed whitespace-pre-wrap break-words">
+                    ${escapeHtml(c.message)}
+                  </div>
+                `;
+                contactMobileFeed.appendChild(card);
+              }
+            });
+          }
+        }
+
+        // Search & Filter Events
+        searchInput.addEventListener("input", renderApplications);
+
+        // Tab Switching
+        tabBtnApps.addEventListener("click", () => {
+          activeTab = "applications";
+          tabBtnApps.className = "tab-btn active px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 bg-[#ff9000] text-stone-950 shadow-sm";
+          tabBtnSubs.className = "tab-btn px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 bg-white text-stone-700 border border-stone-200 hover:text-stone-900 hover:bg-stone-50";
+          viewApps.classList.remove("hidden");
+          viewSubs.classList.add("hidden");
+          exportCsvBtn.innerHTML = '<span class="material-symbols-outlined text-lg text-emerald-400">download</span><span>Export Applications CSV</span>';
+        });
+
+        tabBtnSubs.addEventListener("click", () => {
+          activeTab = "subscribers";
+          tabBtnSubs.className = "tab-btn active px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 bg-[#ff9000] text-stone-950 shadow-sm";
+          tabBtnApps.className = "tab-btn px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 bg-white text-stone-700 border border-stone-200 hover:text-stone-900 hover:bg-stone-50";
+          viewSubs.classList.remove("hidden");
+          viewApps.classList.add("hidden");
+          exportCsvBtn.innerHTML = '<span class="material-symbols-outlined text-lg text-emerald-400">download</span><span>Export Subscribers CSV</span>';
+        });
+
+        subToggleNews.addEventListener("click", () => {
+          activeSubTab = "news";
+          subToggleNews.className = "sub-toggle active px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#ff9000] text-stone-950 transition-colors";
+          subToggleContact.className = "sub-toggle px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-stone-200 text-stone-700 hover:text-stone-900 transition-colors";
+          subNewsPanel.classList.remove("hidden");
+          subContactPanel.classList.add("hidden");
+        });
+
+        subToggleContact.addEventListener("click", () => {
+          activeSubTab = "contact";
+          subToggleContact.className = "sub-toggle active px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#ff9000] text-stone-950 transition-colors";
+          subToggleNews.className = "sub-toggle px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-stone-200 text-stone-700 hover:text-stone-900 transition-colors";
+          subContactPanel.classList.remove("hidden");
+          subNewsPanel.classList.add("hidden");
+        });
+
+        // Detail Modal Handling
+        function openModal(item) {
+          currentModalItem = item;
+          if (modalName) modalName.textContent = item.name || "Candidate";
+          if (modalStatusBadge) modalStatusBadge.innerHTML = getStatusBadge(item.status);
+          if (modalMeta) modalMeta.textContent = "Applied: " + (item.timestamp || "Recent");
+
+          // Quick Contacts
+          if (modalPhone) modalPhone.textContent = item.phone || "No Phone";
+          if (btnCall) btnCall.href = item.phone ? `tel:${item.phone}` : "#";
+          if (modalEmail) modalEmail.textContent = item.email || "No Email";
+          if (btnEmail) btnEmail.href = item.email ? `mailto:${item.email}` : "#";
+          const cleanPhone = (item.phone || "").replace(/\D/g, "");
+          const waPhone = cleanPhone.length === 10 ? "91" + cleanPhone : cleanPhone;
+          if (btnWhatsapp) btnWhatsapp.href = waPhone ? `https://wa.me/${waPhone}` : "#";
+
+          // Fields
+          modalDob.textContent = item.dob || "-";
+          modalGender.textContent = item.gender || "-";
+          modalAddress.textContent = item.address || "-";
+          modalSocial.textContent = item.social || "-";
+          modalOrgType.textContent = item.organizationType || "-";
+          modalOrg.textContent = item.organization || "-";
+          modalRotaractStatus.textContent = item.rotaractStatus || "New";
+
+          // Rotaract story branch
+          if (item.rotaractStatus === "experienced") {
+            modalWhyBox.classList.add("hidden");
+            modalPastBox.classList.remove("hidden");
+            modalClubName.textContent = item.clubName || "-";
+            modalJourney.textContent = item.journey || "-";
+          } else {
+            modalWhyBox.classList.remove("hidden");
+            modalPastBox.classList.add("hidden");
+            modalWhy.textContent = item.why || "-";
+          }
+
+          modalHobbies.textContent = item.hobbies || "-";
+          modalContribute.textContent = item.contribute || "-";
+          if (item.contributeOther) {
+            modalContributeOtherBox.classList.remove("hidden");
+            modalContributeOther.textContent = item.contributeOther;
+          } else {
+            modalContributeOtherBox.classList.add("hidden");
+          }
+
+          // Notes and audit trail
+          renderNotesTimeline(item.notes);
+          updateAuditBar(item.lastReviewer, item.lastReviewedAt, item.status);
+
+          // Status selector (at bottom)
+          if (modalStatusSelect) {
+            modalStatusSelect.setValue(item.status || "Pending");
+          }
+
+          if (newNoteInput) {
+            newNoteInput.value = "";
+            autoExpandTextarea(newNoteInput);
+          }
+          detailModal.classList.remove("hidden");
+        }
+
+        function closeModal() {
+          detailModal.classList.add("hidden");
+          currentModalItem = null;
+        }
+
+        modalClose.addEventListener("click", closeModal);
+        detailModal.addEventListener("click", (e) => {
+          if (e.target === detailModal) closeModal();
+        });
+
+        // Render Notes Timeline (Message as hero highlight, subtle attribution footer)
+        function renderNotesTimeline(notesStr) {
+          modalNotesList.innerHTML = "";
+          const notes = parseNotesChain(notesStr);
+          modalNotesCount.textContent = notes.length + (notes.length === 1 ? " remark" : " remarks");
+
+          if (notes.length === 0) {
+            modalNotesList.innerHTML =
+              '<div class="text-center py-6 text-xs text-stone-400 italic bg-white rounded-xl border border-stone-200/80">No reviewer remarks logged yet. Add observations below.</div>';
+            return;
+          }
+
+          notes.forEach((n) => {
+            const card = document.createElement("div");
+            card.className = "p-4 rounded-xl bg-white border border-stone-200/90 shadow-2xs space-y-2.5 transition-colors";
+
+            const formattedTime = formatNoteTime(n.timestamp);
+
+            card.innerHTML = `
+              <p class="text-sm text-stone-800 font-normal leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(n.text)}</p>
+              <div class="flex flex-wrap items-center gap-1.5 text-xs text-stone-500 pt-2 border-t border-stone-100">
+                <span class="material-symbols-outlined text-[14px] text-[#8e4e00]">person</span>
+                <span class="font-medium text-stone-700">${escapeHtml(n.author)}</span>
+                ${formattedTime ? `<span class="text-stone-300">•</span><span class="text-stone-400">${escapeHtml(formattedTime)}</span>` : ''}
+              </div>
+            `;
+            modalNotesList.appendChild(card);
+          });
+          modalNotesList.scrollTop = modalNotesList.scrollHeight;
+        }
+
+        // Update Audit Attribution Bar
+        function updateAuditBar(reviewer, timestamp, status) {
+          if (reviewer) {
+            modalAuditText.innerHTML = `Last reviewed by <strong>${escapeHtml(reviewer)}</strong>${timestamp ? ' on ' + escapeHtml(timestamp) : ''}`;
+            return;
+          }
+          const s = (status || (currentModalItem ? currentModalItem.status : "") || "Pending").toLowerCase();
+          if (s !== "pending") {
+            modalAuditText.innerHTML = `Status marked as <strong>${escapeHtml(status || currentModalItem.status)}</strong>`;
+            return;
+          }
+          modalAuditText.textContent = "Not yet reviewed by team";
+        }
+
+        // Save Status Update (at bottom of modal)
+        modalUpdateStatusBtn.addEventListener("click", async () => {
+          if (!currentModalItem) return;
+          const newStatus = modalStatusSelect ? modalStatusSelect.getValue() : "Pending";
+          modalUpdateStatusBtn.disabled = true;
+          modalUpdateStatusBtn.innerHTML = '<span class="inline-block animate-spin mr-1">⟳</span> Saving…';
+
+          try {
+            const res = await apiPost({
+              action: "updateStatus",
+              token: currentToken,
+              rowIndex: currentModalItem.rowIndex,
+              email: currentModalItem.email,
+              timestamp: currentModalItem.timestamp,
+              status: newStatus,
+              reviewerName: currentUser ? currentUser.name : "Reviewer",
+            });
+
+            if (res.ok) {
+              const reviewer = res.lastReviewer || (currentUser ? currentUser.name : "Reviewer");
+              const nowIso = new Date().toISOString().replace("T", " ").substring(0, 16);
+              const reviewedAt = res.lastReviewedAt || formatNoteTime(nowIso);
+
+              currentModalItem.status = newStatus;
+              currentModalItem.lastReviewer = reviewer;
+              currentModalItem.lastReviewedAt = reviewedAt;
+              if (res.rowIndex) currentModalItem.rowIndex = res.rowIndex;
+
+              // Synchronize rawData item
+              const target = (rawData.applications || []).find(
+                (a) => a.email === currentModalItem.email && a.timestamp === currentModalItem.timestamp
+              );
+              if (target) {
+                target.status = newStatus;
+                target.lastReviewer = reviewer;
+                target.lastReviewedAt = reviewedAt;
+                if (res.rowIndex) target.rowIndex = res.rowIndex;
+              }
+
+              // Update client cache
+              try {
+                sessionStorage.setItem("rbe_connect_data_cache", JSON.stringify(rawData));
+              } catch (e) {}
+
+              modalStatusBadge.innerHTML = getStatusBadge(newStatus);
+              updateAuditBar(reviewer, reviewedAt, newStatus);
+              updateMetrics();
+              renderApplications();
+              showToast("Status updated to " + newStatus + ".", "check");
+            } else {
+              showToast("Failed to update status: " + (res.error || "Unknown error"), "error");
+            }
+          } catch (err) {
+            showToast("Error updating status: " + err.message, "error");
+          } finally {
+            modalUpdateStatusBtn.disabled = false;
+            modalUpdateStatusBtn.innerHTML = '<span class="material-symbols-outlined text-base">save</span><span>Save Status</span>';
+          }
+        });
+
+        // Add Note
+        modalAddNoteBtn.addEventListener("click", async () => {
+          if (!currentModalItem) return;
+          const noteText = newNoteInput.value.trim();
+          if (!noteText) {
+            showToast("Please enter a note before saving.", "warning");
+            return;
+          }
+
+          modalAddNoteBtn.disabled = true;
+          modalAddNoteBtn.innerHTML = '<span class="inline-block animate-spin mr-1">⟳</span> Adding…';
+
+          try {
+            const res = await apiPost({
+              action: "addNote",
+              token: currentToken,
+              rowIndex: currentModalItem.rowIndex,
+              email: currentModalItem.email,
+              timestamp: currentModalItem.timestamp,
+              note: noteText,
+              reviewerName: currentUser ? currentUser.name : "Reviewer",
+            });
+
+            if (res.ok && res.notes) {
+              const reviewer = res.lastReviewer || (currentUser ? currentUser.name : "Reviewer");
+              const nowIso = new Date().toISOString().replace("T", " ").substring(0, 16);
+              const reviewedAt = res.lastReviewedAt || formatNoteTime(nowIso);
+
+              currentModalItem.notes = res.notes;
+              currentModalItem.lastReviewer = reviewer;
+              currentModalItem.lastReviewedAt = reviewedAt;
+              if (res.rowIndex) currentModalItem.rowIndex = res.rowIndex;
+
+              // Synchronize rawData item
+              const target = (rawData.applications || []).find(
+                (a) => a.email === currentModalItem.email && a.timestamp === currentModalItem.timestamp
+              );
+              if (target) {
+                target.notes = res.notes;
+                target.lastReviewer = reviewer;
+                target.lastReviewedAt = reviewedAt;
+                if (res.rowIndex) target.rowIndex = res.rowIndex;
+              }
+
+              // Update client cache
+              try {
+                sessionStorage.setItem("rbe_connect_data_cache", JSON.stringify(rawData));
+              } catch (e) {}
+
+              renderNotesTimeline(res.notes);
+              updateAuditBar(reviewer, reviewedAt, currentModalItem.status);
+              if (newNoteInput) {
+                newNoteInput.value = "";
+                autoExpandTextarea(newNoteInput);
+              }
+              renderApplications();
+              showToast("Note added successfully.", "done");
+            } else {
+              showToast("Failed to add note: " + (res.error || "Unknown error"), "error");
+            }
+          } catch (err) {
+            showToast("Error adding note: " + err.message, "error");
+          } finally {
+            modalAddNoteBtn.disabled = false;
+            modalAddNoteBtn.innerHTML = '<span class="material-symbols-outlined text-sm text-[#ff9000]">add_comment</span><span>Add Note</span>';
+          }
+        });
+
+        // Dynamic auto-expanding remark textarea
+        function autoExpandTextarea(el) {
+          if (!el) return;
+          el.style.height = "auto";
+          el.style.height = Math.max(el.scrollHeight, 46) + "px";
+        }
+
+        if (newNoteInput) {
+          newNoteInput.addEventListener("input", () => {
+            autoExpandTextarea(newNoteInput);
+          });
+        }
+
+        // Keyboard Shortcuts: Escape to close modal, Cmd/Ctrl+Enter to save note
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            if (!logoutModal.classList.contains("hidden")) {
+              logoutModal.classList.add("hidden");
+            } else if (!detailModal.classList.contains("hidden")) {
+              closeModal();
+            }
+          }
+        });
+
+        if (newNoteInput) {
+          newNoteInput.addEventListener("keydown", (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+              e.preventDefault();
+              modalAddNoteBtn.click();
+            }
+          });
+        }
+
+        // CSV Export Helper
+        exportCsvBtn.addEventListener("click", () => {
+          if (activeTab === "applications") {
+            exportApplicationsCsv();
+          } else {
+            exportSubscribersCsv();
+          }
+        });
+
+        function exportApplicationsCsv() {
+          const apps = rawData.applications || [];
+          if (apps.length === 0) {
+            showToast("No application data to export.", "info");
+            return;
+          }
+
+          const headers = [
+            "Timestamp",
+            "Name",
+            "Email",
+            "Phone",
+            "Date of Birth",
+            "Gender",
+            "Locality",
+            "Social",
+            "Occupation Type",
+            "College or Company",
+            "Rotaract Status",
+            "Why Join",
+            "Club Name",
+            "Journey",
+            "Hobbies",
+            "Contribute",
+            "Contribute (Other)",
+            "Current Status",
+            "Last Reviewer",
+            "Last Reviewed At",
+            "Reviewer Notes History",
+          ];
+
+          const rows = apps.map((a) => [
+            a.timestamp || "",
+            a.name || "",
+            a.email || "",
+            a.phone || "",
+            a.dob || "",
+            a.gender || "",
+            a.address || "",
+            a.social || "",
+            a.organizationType || "",
+            a.organization || "",
+            a.rotaractStatus || "",
+            a.why || "",
+            a.clubName || "",
+            a.journey || "",
+            a.hobbies || "",
+            a.contribute || "",
+            a.contributeOther || "",
+            a.status || "Pending",
+            a.lastReviewer || "",
+            a.lastReviewedAt || "",
+            a.notes || "",
+          ]);
+
+          downloadCsv(headers, rows, "rbe-member-applications-" + getTodayIso() + ".csv");
+          showToast("Exported " + apps.length + " applications to CSV.", "download");
+        }
+
+        function exportSubscribersCsv() {
+          if (activeSubTab === "news") {
+            const subs = rawData.subscribers || [];
+            if (subs.length === 0) {
+              showToast("No subscriber data to export.", "info");
+              return;
+            }
+            const headers = ["Timestamp", "Email"];
+            const rows = subs.map((s) => [s.timestamp || "", s.email || ""]);
+            downloadCsv(headers, rows, "rbe-newsletter-subscribers-" + getTodayIso() + ".csv");
+            showToast("Exported " + subs.length + " subscribers to CSV.", "download");
+          } else {
+            const msgs = rawData.contactMessages || [];
+            if (msgs.length === 0) {
+              showToast("No contact messages to export.", "info");
+              return;
+            }
+            const headers = ["Timestamp", "Name", "Email", "Phone", "Message"];
+            const rows = msgs.map((m) => [m.timestamp || "", m.name || "", m.email || "", m.phone || "", m.message || ""]);
+            downloadCsv(headers, rows, "rbe-contact-messages-" + getTodayIso() + ".csv");
+            showToast("Exported " + msgs.length + " contact inquiries to CSV.", "download");
+          }
+        }
+
+        function downloadCsv(headers, rows, filename) {
+          const escapeCell = (val) => {
+            const str = String(val == null ? "" : val);
+            if (str.search(/("|,|\n|\r)/g) >= 0) {
+              return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+          };
+
+          const csvLines = [];
+          csvLines.push(headers.map(escapeCell).join(","));
+          rows.forEach((r) => {
+            csvLines.push(r.map(escapeCell).join(","));
+          });
+
+          // UTF-8 BOM for Microsoft Excel compatibility
+          const blob = new Blob(["\uFEFF" + csvLines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+
+        function getTodayIso() {
+          return new Date().toISOString().split("T")[0];
+        }
+
+        function escapeHtml(str) {
+          if (!str) return "";
+          return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        }
+
+        init();
+      })();
+    </script>
+  </body>
+</html>

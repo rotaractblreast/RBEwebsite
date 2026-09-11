@@ -34,7 +34,7 @@ Both join emails are sent **multipart** — a branded HTML body plus a plain-tex
 |---|---|---|
 | To / CC | applicant, CC club | club |
 | Reply-To | `replyToEmail` (+ `clubNotifyEmail` if different) — never the Apps Script owner | applicant (reply goes straight to them) |
-| Body | Short, warm, brand header, one CTA | Scannable label/value table of every field |
+| Body | Short, warm, brand header, one CTA | Scannable label/value table of every field + one-tap WhatsApp & Call buttons |
 
 `MailApp` always sends **From** the Google account that owns the script. That is fine and expected — applicants should never need to write to that account. The thank-you sets **Reply-To** to the club inbox(es) from `CONFIG`, and the body names that address explicitly. Prefer deploying the Web App while signed in as the club Gmail (`info@…`) if you want From and Reply-To to match; either way, Reply is steered to the club.
 
@@ -188,9 +188,47 @@ Textarea newlines (`why`, `journey`, `hobbies`) are preserved in Sheet cells.
 { "form": "contact", "name": "", "email": "", "phone": "", "message": "", "website": "", "t": 0 }
 ```
 
+## Reviewer Dashboard API (`Dashboard.gs` & `/connect`)
+
+In addition to public form submissions, the Apps Script project includes `Dashboard.gs` to power the member applications & subscribers review dashboard at `/connect`.
+
+### 1. Add `Dashboard.gs` to the Google Apps Script project
+1. Open the Google Sheet → **Extensions → Apps Script**.
+2. Click **+ (Add a file)** next to Files → select **Script**.
+3. Name it `Dashboard`.
+4. Paste the contents of [`Dashboard.gs`](./Dashboard.gs) and save.
+5. In `Code.gs`, verify the 3-line dispatch hook in `doPost(e)` is present:
+   ```javascript
+   if (body.action) {
+     return handleDashboardAction_(body, e);
+   }
+   ```
+
+### 2. Configure Reviewers
+The script automatically ensures a `Reviewers` sheet tab exists.
+Columns: `Email | Password | Name | Role | Active`
+
+Example row:
+`reviewer@rotaractblreast.org | secretPass123 | Jane Doe | Membership Director | TRUE`
+
+Passwords can be stored as plain text or SHA-256 hashes. Reviewers log in directly at `https://rotaractblreast.org/connect/`.
+
+### 3. Application Review & Status Tracking
+- **Status (Column 20 / Col T)**: Options include `Pending`, `Under Review`, `Contacted`, `Accepted`, `Waitlisted`, `Rejected`.
+- **Notes (Column 21 / Col U)**: Chronological, timestamped log of remarks attributed to the reviewer (e.g., `[2026-09-11 19:30 - Jane Doe]: Candidate contacted.`).
+- **No Outgoing Emails**: Updating a candidate's status or adding reviewer notes is strictly a Sheet update. It will never trigger confirmation, acceptance, or notification emails.
+
+### 4. Deploying the update
+After adding `Dashboard.gs` and updating `Code.gs`:
+1. Click **Deploy → Manage deployments**.
+2. Click the **Edit (pencil icon)** on the active Web App deployment.
+3. Under **Version**, choose **New version**.
+4. Click **Deploy**.
+
 ## Limits / gotchas
 
 - Gmail/Apps Script daily email quotas — fine for club join volume; not for mass mail.
 - Web App “Anyone” means the URL is public — responses must never include private club data.
 - Trust the JSON `{ ok, status }`, not the transport HTTP code.
 - Re-running `setupSpreadsheet` rewrites header row 1 but does not move existing data. Archive the Join sheet first if columns changed after you already collected rows.
+

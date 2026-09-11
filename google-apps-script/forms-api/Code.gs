@@ -101,6 +101,12 @@ function doPost(e) {
   var form = "";
   try {
     var body = parseBody_(e);
+
+    // Dashboard API dispatch (delegated to Dashboard.gs; zero impact on form submissions)
+    if (body.action) {
+      return handleDashboardAction_(body, e);
+    }
+
     form = String(body.form || "")
       .toLowerCase()
       .trim();
@@ -402,7 +408,11 @@ function clubNotifyBody_(body) {
   var isStudent = str_(body.organizationType).toLowerCase() === "student";
   var lines = [
     "A new membership application arrived from the website.",
-    "Reply to this email to write back to the applicant.",
+    "",
+    "Quick actions to reach applicant:",
+    "  WhatsApp: " + waLink_(body.phone),
+    "  Call:     " + telLink_(body.phone),
+    "  Email:    " + str_(body.email),
     "",
     "- Application -",
     "",
@@ -547,6 +557,48 @@ function button_(href, label) {
   );
 }
 
+function waLink_(phone) {
+  var d = String(phone || "").replace(/\D/g, "");
+  if (d.length === 10) d = "91" + d;
+  return "https://wa.me/" + d;
+}
+
+function telLink_(phone) {
+  var d = String(phone || "").replace(/\D/g, "");
+  if (d.length === 10) return "tel:+91" + d;
+  if (d.length === 12 && d.indexOf("91") === 0) return "tel:+" + d;
+  var raw = String(phone || "").trim();
+  return "tel:" + (raw.indexOf("+") === 0 ? raw : "+" + d);
+}
+
+function contactButtons_(phone, name) {
+  var firstName = esc_(str_(name).split(" ")[0] || "Applicant");
+  var waHref = waLink_(phone);
+  var telHref = telLink_(phone);
+
+  return (
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 6px 0;"><tr>' +
+    '<td style="background:#25D366;border-radius:6px;padding:0;">' +
+    '<a href="' +
+    waHref +
+    '" style="display:inline-block;padding:11px 20px;color:#ffffff;font-weight:700;font-size:14px;text-decoration:none;">' +
+    "WhatsApp " +
+    firstName +
+    "</a></td>" +
+    '<td style="width:12px;">&nbsp;</td>' +
+    '<td style="background:' +
+    BRAND_ORANGE +
+    ';border-radius:6px;padding:0;">' +
+    '<a href="' +
+    telHref +
+    '" style="display:inline-block;padding:11px 20px;color:#231a11;font-weight:700;font-size:14px;text-decoration:none;">' +
+    "Call " +
+    firstName +
+    "</a></td>" +
+    "</tr></table>"
+  );
+}
+
 function applicantConfirmHtml_(body, replyTo) {
   var clubInbox = (replyTo || CONFIG.replyToEmail || "info@rotaractblreast.org").split(",")[0].trim();
   var inner = [
@@ -558,12 +610,12 @@ function applicantConfirmHtml_(body, replyTo) {
       '" style="color:#8e4e00;">' +
       esc_(clubInbox) +
       "</a> (the club), not to the automated sender.</p>",
-    button_(SITE_URL + "/events/", "See upcoming events"),
+    button_(SITE_URL + "/news/", "See What We Do"),
     '<p style="margin:18px 0 0 0;font-size:14px;color:' +
       BRAND_MUTED +
       ';">Meanwhile, follow along on <a href="https://www.instagram.com/rotaractblreast/" style="color:#8e4e00;">Instagram</a> or browse <a href="' +
       SITE_URL +
-      '/causes/" style="color:#8e4e00;">what we work on</a>.</p>',
+      '/events/" style="color:#8e4e00;">our upcoming events</a>.</p>',
   ].join("");
 
   return emailShell_(
@@ -580,7 +632,7 @@ function clubNotifyHtml_(body) {
   var rows = [
     row_("Name", str_(body.name)),
     row_("Email", mailto_(str_(body.email))),
-    row_("Phone", esc_(str_(body.phone))),
+    row_("Phone", '<a href="' + telLink_(body.phone) + '" style="color:#8e4e00;">' + esc_(str_(body.phone)) + "</a>"),
     row_("Date of birth", esc_(str_(body.dob))),
     row_("Gender", esc_(str_(body.gender) || "-")),
     row_("Area / locality", esc_(str_(body.address))),
@@ -603,11 +655,11 @@ function clubNotifyHtml_(body) {
   }
 
   var inner = [
-    '<p style="margin:0 0 16px 0;">A new membership application arrived from the website. <strong>Reply to this email</strong> to write back to the applicant directly.</p>',
+    '<p style="margin:0 0 16px 0;">A new membership application arrived from the website. Use the quick action buttons below to reach out directly:</p>',
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:14px;">',
     rows.join(""),
     "</table>",
-    button_("mailto:" + str_(body.email), "Reply to " + (str_(body.name).split(" ")[0] || "applicant")),
+    contactButtons_(body.phone, body.name),
   ].join("");
 
   return emailShell_(
@@ -729,9 +781,16 @@ function setupSpreadsheet() {
       sh.getRange(1, 1, 1, headers.length).setValues([headers]);
     }
   });
+  if (typeof ensureReviewersSheet_ === "function") {
+    ensureReviewersSheet_(ss);
+  }
+  var joinSh = ss.getSheetByName("Join");
+  if (joinSh && typeof ensureJoinHeaders_ === "function") {
+    ensureJoinHeaders_(joinSh);
+  }
   // Remove default "Sheet1" if empty and we have our sheets
   var def = ss.getSheetByName("Sheet1");
   if (def && ss.getSheets().length > 1) ss.deleteSheet(def);
   Logger.log("Sheets ready on: " + ss.getUrl());
-  Logger.log("Tabs: Join, Newsletter, Contact");
+  Logger.log("Tabs: Join, Newsletter, Contact, Reviewers");
 }
