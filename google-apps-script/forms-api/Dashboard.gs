@@ -125,6 +125,7 @@ function handleDashboardLogin_(body, e) {
     status: 200,
     token: token,
     user: reviewer,
+    oneSignalAppId: (typeof getConfig_ === "function" ? (getConfig_().oneSignalAppId || "") : ""),
   });
 }
 
@@ -381,6 +382,7 @@ function handleDashboardGetData_(bypassCache) {
     applications: applications,
     subscribers: subscribers,
     contactMessages: contactMessages,
+    oneSignalAppId: (typeof getConfig_ === "function" ? (getConfig_().oneSignalAppId || "") : ""),
   };
 
   // Cache compiled payload for 120s (2 minutes) to ensure blazing fast reads

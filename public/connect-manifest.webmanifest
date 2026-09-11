@@ -1,0 +1,45 @@
+{
+  "id": "/connect/",
+  "name": "RBE Connect — Reviewer Portal",
+  "short_name": "RBE Connect",
+  "description": "Rotaract Club of Bangalore East Reviewer Portal for Member Applications",
+  "start_url": "/connect/",
+  "scope": "/connect/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fff8f5",
+  "theme_color": "#ff9000",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

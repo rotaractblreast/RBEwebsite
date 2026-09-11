@@ -37,6 +37,19 @@
     X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
+[[headers]]
+  for = "/connect-sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Content-Type = "application/javascript; charset=utf-8"
+    Service-Worker-Allowed = "/"
+
+[[headers]]
+  for = "/connect-manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json; charset=utf-8"
+    Cache-Control = "public, max-age=3600"
+
 # Critical host / path redirects only.
 # Do NOT add trailing-slash canonicals like /about → /about/: with force=true,
 # Netlify matches both /about and /about/ and loops (ERR_TOO_MANY_REDIRECTS).

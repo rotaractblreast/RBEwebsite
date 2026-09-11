@@ -7,6 +7,12 @@ const formsApi =
   import.meta.env.PUBLIC_FORMS_API_URL ||
   process.env.PUBLIC_FORMS_API_URL ||
   "";
+
+// OneSignal App ID (optional env override, or loaded dynamically from Apps Script Config)
+const oneSignalAppId =
+  import.meta.env.PUBLIC_ONESIGNAL_APP_ID ||
+  process.env.PUBLIC_ONESIGNAL_APP_ID ||
+  "";
 ---
 
 <!DOCTYPE html>
@@ -18,6 +24,13 @@ const formsApi =
     <meta name="theme-color" content="#ff9000" />
     <meta name="robots" content="noindex, nofollow, noarchive" />
     <title>Connect Portal | {SITE.title}</title>
+    <link rel="manifest" href="/connect-manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="RBE Connect" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="RBE Connect" />
     <link rel="shortcut icon" href="/images/site/favicon.png" type="image/x-icon" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -29,9 +42,11 @@ const formsApi =
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap"
       rel="stylesheet"
     />
+    <!-- OneSignal Web Push SDK v16 for native background lock-screen notifications -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   </head>
   <body class="min-h-full flex flex-col font-sans antialiased text-[#231a11] bg-[#fff8f5]">
-    <div id="connect-app" data-api={formsApi} class="flex-1 flex flex-col">
+    <div id="connect-app" data-api={formsApi} data-onesignal={oneSignalAppId} class="flex-1 flex flex-col">
       <!-- Loading Screen -->
       <div id="app-loading" class="flex-1 flex items-center justify-center p-6">
         <div class="flex flex-col items-center gap-4 text-center">
@@ -104,6 +119,16 @@ const formsApi =
             <p class="text-xs text-stone-500">
               Access restricted to authorized RBE Board & Reviewers.
             </p>
+            <div id="login-install-wrap" class="hidden mt-4 pt-3 border-t border-stone-100 flex justify-center">
+              <button
+                type="button"
+                id="login-install-btn"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <span class="material-symbols-outlined text-sm">install_mobile</span>
+                <span>Install Connect App</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -123,17 +148,94 @@ const formsApi =
               </span>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 sm:gap-3">
               <div class="hidden sm:flex items-center gap-2 bg-stone-50 border border-stone-200 px-3 py-1.5 rounded-xl text-xs">
                 <span class="material-symbols-outlined text-[#8e4e00] text-base">person</span>
                 <span id="user-display" class="font-medium text-stone-700">Reviewer</span>
+              </div>
+
+              <!-- Install App Button (Visible when install prompt is available or for iOS) -->
+              <button
+                type="button"
+                id="install-app-btn"
+                title="Install Connect App on your device"
+                class="hidden items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-[#8e4e00] border border-amber-300 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <span class="material-symbols-outlined text-base">download_for_offline</span>
+                <span class="hidden md:inline">Install App</span>
+              </button>
+
+              <!-- Notifications Toggle & Popover -->
+              <div class="relative">
+                <button
+                  type="button"
+                  id="notif-toggle-btn"
+                  title="Application Alerts & Push Notifications"
+                  class="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-900 transition-colors flex items-center justify-center border border-stone-200/60 relative cursor-pointer"
+                  aria-expanded="false"
+                  aria-haspopup="dialog"
+                >
+                  <span class="material-symbols-outlined text-xl" id="notif-icon">notifications</span>
+                  <span id="notif-active-dot" class="hidden absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white"></span>
+                </button>
+
+                <!-- Notifications Popover Backdrop on mobile -->
+                <div id="notif-popover-backdrop" class="hidden fixed inset-0 bg-stone-950/20 backdrop-blur-[2px] z-40 sm:hidden"></div>
+
+                <!-- Notifications Popover -->
+                <div
+                  id="notif-popover"
+                  class="hidden fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-16 sm:top-full mt-2 sm:w-80 bg-white border border-stone-200/90 rounded-2xl shadow-2xl sm:shadow-xl p-4 sm:p-5 z-50 animate-in fade-in zoom-in-95 duration-150 text-stone-900 max-w-sm sm:max-w-none mx-auto sm:mx-0"
+                >
+                  <div class="flex items-center justify-between border-b border-stone-100 pb-3 mb-3">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-[#ff9000] text-xl">campaign</span>
+                      <h4 class="font-bold text-sm text-stone-900">Push Notifications</h4>
+                    </div>
+                    <span id="notif-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-stone-100 text-stone-600 border border-stone-200">
+                      Checking
+                    </span>
+                  </div>
+
+                  <p class="text-xs text-stone-500 mb-4 leading-relaxed">
+                    Get instant OS & PWA alerts whenever a new member application is submitted from the website.
+                  </p>
+
+                  <div class="space-y-2.5">
+                    <button
+                      type="button"
+                      id="notif-enable-btn"
+                      class="w-full py-2.5 px-3 bg-[#ff9000] hover:bg-[#e07f00] text-stone-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                    >
+                      <span class="material-symbols-outlined text-base">notifications_active</span>
+                      <span id="notif-enable-text">Enable Notifications</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="notif-test-btn"
+                      class="w-full py-2 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <span class="material-symbols-outlined text-base">send_to_mobile</span>
+                      <span>Send Test Notification</span>
+                    </button>
+                  </div>
+
+                  <div class="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
+                    <div class="flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-stone-400 text-sm">alarm</span>
+                      <span>Auto-check for new apps</span>
+                    </div>
+                    <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">Every 60s</span>
+                  </div>
+                </div>
               </div>
 
               <button
                 type="button"
                 id="refresh-btn"
                 title="Refresh latest data"
-                class="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-900 transition-colors flex items-center justify-center border border-stone-200/60"
+                class="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-900 transition-colors flex items-center justify-center border border-stone-200/60 cursor-pointer"
               >
                 <span class="material-symbols-outlined text-xl" id="refresh-icon">sync</span>
               </button>
@@ -141,7 +243,7 @@ const formsApi =
               <button
                 type="button"
                 id="logout-btn"
-                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-colors"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-colors cursor-pointer"
               >
                 <span class="material-symbols-outlined text-base">logout</span>
                 <span class="hidden sm:inline">Log out</span>
@@ -152,6 +254,39 @@ const formsApi =
 
         <!-- Main Workspace -->
         <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          <!-- Persistent Notification Activation Banner (Visible when notifications are not enabled) -->
+          <div
+            id="notif-persistent-banner"
+            class="hidden p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 border border-amber-400/70 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+          >
+            <div class="flex items-start gap-3.5">
+              <div class="h-10 w-10 sm:h-11 sm:w-11 rounded-xl sm:rounded-2xl bg-[#ff9000] text-stone-950 flex items-center justify-center shrink-0 shadow-xs">
+                <span class="material-symbols-outlined text-2xl animate-pulse">notifications_active</span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="font-extrabold text-stone-950 text-sm sm:text-base">
+                    Enable Application Push Notifications
+                  </h3>
+                  <span id="notif-banner-badge" class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-200/90 text-amber-950 border border-amber-300">
+                    Action Required
+                  </span>
+                </div>
+                <p id="notif-banner-desc" class="text-xs text-stone-700 mt-1 leading-relaxed max-w-2xl font-medium">
+                  Never miss an applicant. Turn on instant notifications to receive real-time alerts on this device whenever a candidate submits a membership application.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="notif-banner-enable-btn"
+              class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#ff9000] hover:bg-[#e07f00] active:scale-[0.98] text-stone-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shrink-0 shadow-sm"
+            >
+              <span class="material-symbols-outlined text-lg">notifications_active</span>
+              <span id="notif-banner-btn-text">Turn On Notifications</span>
+            </button>
+          </div>
+
           <!-- Metric Tiles -->
           <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <div class="bg-white border border-stone-200/90 rounded-2xl p-4 sm:p-5 shadow-xs min-w-0">
@@ -586,6 +721,107 @@ const formsApi =
         </div>
       </div>
 
+      <!-- iOS / Safari Install Instructions Modal -->
+      <div id="ios-install-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white border border-stone-200 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div class="flex items-center justify-between pb-3 border-b border-stone-100">
+            <div class="flex items-center gap-2.5">
+              <img src="/icons/icon-192.png" alt="RBE Connect" class="h-9 w-9 rounded-xl shadow-xs" />
+              <div>
+                <h3 class="font-bold font-display text-base text-stone-900">Install RBE Connect</h3>
+                <p class="text-[11px] text-stone-500">Progressive Web App on iOS</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="ios-install-close"
+              class="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100 transition-colors cursor-pointer"
+              aria-label="Close dialog"
+            >
+              <span class="material-symbols-outlined text-xl">close</span>
+            </button>
+          </div>
+
+          <div class="space-y-3.5 text-xs text-stone-700">
+            <p class="text-stone-600">
+              Install RBE Connect on your home screen for quick 1-tap reviewer access, full-screen portal, and instant candidate notifications.
+            </p>
+
+            <div class="flex items-start gap-3 p-3 rounded-xl bg-amber-50/60 border border-amber-200/80">
+              <div class="h-6 w-6 rounded-full bg-[#ff9000] text-stone-950 font-bold flex items-center justify-center shrink-0 text-xs mt-0.5">1</div>
+              <div>
+                <span class="font-semibold text-stone-900">Tap the Share button</span>
+                <p class="text-stone-500 mt-0.5">In Safari's bottom toolbar, tap the Share icon (<span class="material-symbols-outlined text-xs align-middle">ios_share</span>).</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3 p-3 rounded-xl bg-amber-50/60 border border-amber-200/80">
+              <div class="h-6 w-6 rounded-full bg-[#ff9000] text-stone-950 font-bold flex items-center justify-center shrink-0 text-xs mt-0.5">2</div>
+              <div>
+                <span class="font-semibold text-stone-900">Choose "Add to Home Screen"</span>
+                <p class="text-stone-500 mt-0.5">Scroll down in the action sheet and select <span class="font-semibold text-stone-900">"Add to Home Screen"</span> (<span class="material-symbols-outlined text-xs align-middle">add_box</span>).</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3 p-3 rounded-xl bg-amber-50/60 border border-amber-200/80">
+              <div class="h-6 w-6 rounded-full bg-[#ff9000] text-stone-950 font-bold flex items-center justify-center shrink-0 text-xs mt-0.5">3</div>
+              <div>
+                <span class="font-semibold text-stone-900">Tap "Add"</span>
+                <p class="text-stone-500 mt-0.5">Confirm by tapping <span class="font-semibold text-stone-900">"Add"</span> in the top-right corner. The app will appear on your Home Screen.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button
+              type="button"
+              id="ios-install-done"
+              class="w-full py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs transition-colors cursor-pointer"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notification Activation Force Modal -->
+      <div
+        id="notif-force-modal"
+        class="hidden fixed inset-0 bg-stone-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+      >
+        <div class="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-stone-200 text-center animate-in zoom-in-95 duration-150">
+          <div class="mx-auto w-16 h-16 rounded-2xl bg-[#ff9000] text-stone-950 flex items-center justify-center mb-5 shadow-lg shadow-amber-500/20">
+            <span class="material-symbols-outlined text-3xl animate-bounce">notifications_active</span>
+          </div>
+
+          <h3 class="text-lg sm:text-xl font-extrabold text-stone-950 mb-2">
+            Activate Application Alerts
+          </h3>
+          <p class="text-xs sm:text-sm text-stone-600 leading-relaxed mb-6">
+            RBE Connect alerts you instantly the second a prospective member applies to join. Enable notifications on this device to review candidates without delay.
+          </p>
+
+          <div class="space-y-3">
+            <button
+              type="button"
+              id="notif-modal-enable-btn"
+              class="w-full py-3 px-4 bg-[#ff9000] hover:bg-[#e07f00] text-stone-950 font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-amber-500/20"
+            >
+              <span class="material-symbols-outlined text-xl">notifications_active</span>
+              <span>Enable Instant Notifications</span>
+            </button>
+
+            <button
+              type="button"
+              id="notif-modal-dismiss-btn"
+              class="w-full py-2.5 px-4 bg-transparent hover:bg-stone-100 text-stone-500 hover:text-stone-800 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+            >
+              Remind Me Later
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Toast Notification -->
       <div id="toast" class="fixed bottom-6 right-6 z-50 hidden max-w-sm p-4 rounded-xl bg-stone-900 border border-stone-800 shadow-2xl text-sm flex items-center gap-3 text-white">
         <span class="material-symbols-outlined text-[#ff9000]" id="toast-icon">info</span>
@@ -617,6 +853,31 @@ const formsApi =
         const logoutModal = document.getElementById("logout-modal");
         const logoutCancelBtn = document.getElementById("logout-cancel-btn");
         const logoutConfirmBtn = document.getElementById("logout-confirm-btn");
+
+        // PWA & Notification Elements
+        const installAppBtn = document.getElementById("install-app-btn");
+        const loginInstallWrap = document.getElementById("login-install-wrap");
+        const loginInstallBtn = document.getElementById("login-install-btn");
+        const iosInstallModal = document.getElementById("ios-install-modal");
+        const iosInstallClose = document.getElementById("ios-install-close");
+        const iosInstallDone = document.getElementById("ios-install-done");
+        const notifToggleBtn = document.getElementById("notif-toggle-btn");
+        const notifPopoverBackdrop = document.getElementById("notif-popover-backdrop");
+        const notifPopover = document.getElementById("notif-popover");
+        const notifStatusBadge = document.getElementById("notif-status-badge");
+        const notifEnableBtn = document.getElementById("notif-enable-btn");
+        const notifEnableText = document.getElementById("notif-enable-text");
+        const notifTestBtn = document.getElementById("notif-test-btn");
+        const notifActiveDot = document.getElementById("notif-active-dot");
+        const notifIcon = document.getElementById("notif-icon");
+        const notifPersistentBanner = document.getElementById("notif-persistent-banner");
+        const notifBannerBadge = document.getElementById("notif-banner-badge");
+        const notifBannerDesc = document.getElementById("notif-banner-desc");
+        const notifBannerEnableBtn = document.getElementById("notif-banner-enable-btn");
+        const notifBannerBtnText = document.getElementById("notif-banner-btn-text");
+        const notifForceModal = document.getElementById("notif-force-modal");
+        const notifModalEnableBtn = document.getElementById("notif-modal-enable-btn");
+        const notifModalDismissBtn = document.getElementById("notif-modal-dismiss-btn");
 
         // Stats
         const statTotal = document.getElementById("stat-total");
@@ -701,6 +962,11 @@ const formsApi =
         let activeSubTab = "news"; // "news" | "contact"
         let rawData = { applications: [], subscribers: [], contactMessages: [] };
         let currentModalItem = null;
+        let swRegistration = null;
+        let deferredInstallPrompt = null;
+        let autoPollTimer = null;
+        const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+        const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 
         // Custom Accessible Styled Select Component
         function createCustomSelect({ container, defaultValue, options, onChange, direction = "down" }) {
@@ -1039,9 +1305,441 @@ const formsApi =
           return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300">Pending</span>';
         }
 
+        // --- PWA & Notification Engine ---
+
+        function setupServiceWorker() {
+          if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+              navigator.serviceWorker
+                .register("/connect-sw.js", { scope: "/connect/" })
+                .then((reg) => {
+                  swRegistration = reg;
+                  console.log("Connect ServiceWorker registered with scope:", reg.scope);
+                })
+                .catch((err) => {
+                  console.warn("Connect ServiceWorker registration error:", err);
+                });
+            });
+          }
+        }
+
+        function setupInstallPrompts() {
+          if (isStandalone) {
+            return;
+          }
+
+          // Chrome / Edge / Android install prompt
+          window.addEventListener("beforeinstallprompt", (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            if (installAppBtn) {
+              installAppBtn.classList.remove("hidden");
+              installAppBtn.classList.add("inline-flex");
+            }
+            if (loginInstallWrap) {
+              loginInstallWrap.classList.remove("hidden");
+            }
+          });
+
+          // iOS Safari detection
+          if (isIos && !isStandalone) {
+            if (installAppBtn) {
+              installAppBtn.classList.remove("hidden");
+              installAppBtn.classList.add("inline-flex");
+            }
+            if (loginInstallWrap) {
+              loginInstallWrap.classList.remove("hidden");
+            }
+          }
+
+          async function triggerInstallFlow() {
+            if (deferredInstallPrompt) {
+              deferredInstallPrompt.prompt();
+              const choice = await deferredInstallPrompt.userChoice;
+              if (choice && choice.outcome === "accepted") {
+                if (installAppBtn) installAppBtn.classList.add("hidden");
+                if (loginInstallWrap) loginInstallWrap.classList.add("hidden");
+                showToast("RBE Connect installed successfully!", "done");
+              }
+              deferredInstallPrompt = null;
+            } else if (isIos) {
+              if (iosInstallModal) iosInstallModal.classList.remove("hidden");
+            } else {
+              showToast("Use your browser's menu to select 'Install App' or 'Add to Home screen'.", "info");
+            }
+          }
+
+          if (installAppBtn) installAppBtn.addEventListener("click", triggerInstallFlow);
+          if (loginInstallBtn) loginInstallBtn.addEventListener("click", triggerInstallFlow);
+
+          if (iosInstallClose) {
+            iosInstallClose.addEventListener("click", () => iosInstallModal.classList.add("hidden"));
+          }
+          if (iosInstallDone) {
+            iosInstallDone.addEventListener("click", () => iosInstallModal.classList.add("hidden"));
+          }
+          if (iosInstallModal) {
+            iosInstallModal.addEventListener("click", (e) => {
+              if (e.target === iosInstallModal) {
+                iosInstallModal.classList.add("hidden");
+              }
+            });
+          }
+        }
+
+        // Web Audio API synthesized notification sound (zero external asset dependencies)
+        function playAlertChime() {
+          try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            if (ctx.state === "suspended") {
+              ctx.resume();
+            }
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc1.type = "sine";
+            osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+            osc1.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+
+            osc2.type = "triangle";
+            osc2.frequency.setValueAtTime(440, ctx.currentTime); // A4
+            osc2.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.15); // E5
+
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc1.start(ctx.currentTime);
+            osc2.start(ctx.currentTime);
+            osc1.stop(ctx.currentTime + 0.35);
+            osc2.stop(ctx.currentTime + 0.35);
+          } catch (e) {}
+        }
+
+        // Trigger system notification via ServiceWorker or fallback Notification API
+        async function triggerSystemNotification(title, body, data = {}) {
+          playAlertChime();
+          const options = {
+            body: body || "",
+            icon: "/icons/icon-192.png",
+            badge: "/images/site/favicon.png",
+            vibrate: [150, 80, 150],
+            data: Object.assign({ url: "/connect/" }, data),
+          };
+
+          try {
+            if (swRegistration && "showNotification" in swRegistration) {
+              await swRegistration.showNotification(title, options);
+            } else if ("Notification" in window && Notification.permission === "granted") {
+              const n = new Notification(title, options);
+              n.onclick = () => {
+                window.focus();
+                n.close();
+              };
+            }
+          } catch (err) {
+            console.warn("Could not display native notification:", err);
+          }
+        }
+
+        function updateNotificationStatus() {
+          const isDashboardVisible = dashboardScreen && !dashboardScreen.classList.contains("hidden");
+
+          if (!("Notification" in window)) {
+            if (notifStatusBadge) {
+              notifStatusBadge.textContent = "Unsupported";
+              notifStatusBadge.className =
+                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-stone-100 text-stone-500 border border-stone-200";
+            }
+            if (notifEnableBtn) notifEnableBtn.disabled = true;
+            if (notifPersistentBanner) notifPersistentBanner.classList.add("hidden");
+            if (notifForceModal) notifForceModal.classList.add("hidden");
+            return;
+          }
+
+          const perm = Notification.permission;
+          if (perm === "granted") {
+            if (notifStatusBadge) {
+              notifStatusBadge.textContent = "Active";
+              notifStatusBadge.className =
+                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200";
+            }
+            if (notifActiveDot) notifActiveDot.classList.remove("hidden");
+            if (notifIcon) notifIcon.textContent = "notifications_active";
+            if (notifEnableText) notifEnableText.textContent = "Notifications Enabled";
+            if (notifEnableBtn) {
+              notifEnableBtn.classList.remove("bg-[#ff9000]", "text-stone-950", "hover:bg-[#e07f00]");
+              notifEnableBtn.classList.add("bg-emerald-600", "text-white", "hover:bg-emerald-700");
+            }
+            if (notifPersistentBanner) notifPersistentBanner.classList.add("hidden");
+            if (notifForceModal) notifForceModal.classList.add("hidden");
+          } else if (perm === "denied") {
+            if (notifStatusBadge) {
+              notifStatusBadge.textContent = "Blocked";
+              notifStatusBadge.className =
+                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200";
+            }
+            if (notifActiveDot) notifActiveDot.classList.add("hidden");
+            if (notifIcon) notifIcon.textContent = "notifications_off";
+            if (notifEnableText) notifEnableText.textContent = "Blocked in Browser Settings";
+            if (notifEnableBtn) notifEnableBtn.disabled = true;
+
+            if (isDashboardVisible && notifPersistentBanner) {
+              notifPersistentBanner.classList.remove("hidden");
+              if (notifBannerBadge) {
+                notifBannerBadge.textContent = "Blocked";
+                notifBannerBadge.className = "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-200";
+              }
+              if (notifBannerDesc) {
+                notifBannerDesc.textContent = "Notifications are blocked in your browser settings. To receive candidate alerts, click the lock/settings icon in your browser address bar and set Notifications to Allow.";
+              }
+              if (notifBannerBtnText) notifBannerBtnText.textContent = "Blocked in Settings";
+              if (notifBannerEnableBtn) {
+                notifBannerEnableBtn.classList.remove("bg-[#ff9000]", "hover:bg-[#e07f00]", "text-stone-950");
+                notifBannerEnableBtn.classList.add("bg-stone-200", "text-stone-600", "hover:bg-stone-300");
+              }
+            } else if (notifPersistentBanner) {
+              notifPersistentBanner.classList.add("hidden");
+            }
+            if (notifForceModal) notifForceModal.classList.add("hidden");
+          } else {
+            // perm === "default"
+            if (notifStatusBadge) {
+              notifStatusBadge.textContent = "Not Enabled";
+              notifStatusBadge.className =
+                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200";
+            }
+            if (notifActiveDot) notifActiveDot.classList.add("hidden");
+            if (notifIcon) notifIcon.textContent = "notifications";
+            if (notifEnableText) notifEnableText.textContent = "Enable Push Notifications";
+            if (notifEnableBtn) {
+              notifEnableBtn.disabled = false;
+              notifEnableBtn.classList.add("bg-[#ff9000]", "text-stone-950", "hover:bg-[#e07f00]");
+              notifEnableBtn.classList.remove("bg-emerald-600", "text-white", "hover:bg-emerald-700");
+            }
+
+            if (isDashboardVisible) {
+              if (notifPersistentBanner) {
+                notifPersistentBanner.classList.remove("hidden");
+                if (notifBannerBadge) {
+                  notifBannerBadge.textContent = "Action Required";
+                  notifBannerBadge.className = "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-200/90 text-amber-950 border border-amber-300";
+                }
+                if (notifBannerDesc) {
+                  notifBannerDesc.textContent = "Never miss an applicant. Turn on instant notifications to receive real-time alerts on this device whenever a candidate submits a membership application.";
+                }
+                if (notifBannerBtnText) notifBannerBtnText.textContent = "Turn On Notifications";
+                if (notifBannerEnableBtn) {
+                  notifBannerEnableBtn.classList.add("bg-[#ff9000]", "hover:bg-[#e07f00]", "text-stone-950");
+                  notifBannerEnableBtn.classList.remove("bg-stone-200", "text-stone-600", "hover:bg-stone-300");
+                }
+              }
+
+              // Show force modal on landing if not dismissed in this session
+              const dismissed = sessionStorage.getItem("rbe_notif_modal_dismissed");
+              if (!dismissed && notifForceModal) {
+                notifForceModal.classList.remove("hidden");
+              }
+            } else {
+              if (notifPersistentBanner) notifPersistentBanner.classList.add("hidden");
+              if (notifForceModal) notifForceModal.classList.add("hidden");
+            }
+          }
+        }
+
+        // OneSignal Web Push Integration
+        let activeOneSignalAppId = "";
+        let oneSignalInitialized = false;
+
+        function initOneSignal(appId) {
+          if (!appId || oneSignalInitialized) return;
+          activeOneSignalAppId = appId;
+          oneSignalInitialized = true;
+
+          window.OneSignalDeferred = window.OneSignalDeferred || [];
+          window.OneSignalDeferred.push(async function (OneSignal) {
+            try {
+              await OneSignal.init({
+                appId: appId,
+                serviceWorkerPath: "OneSignalSDKWorker.js",
+                serviceWorkerParam: { scope: "/" },
+                allowLocalhostAsSecureOrigin: true,
+              });
+
+              if (OneSignal.Notifications && OneSignal.Notifications.addEventListener) {
+                OneSignal.Notifications.addEventListener("permissionChange", () => {
+                  updateNotificationStatus();
+                });
+              }
+              updateNotificationStatus();
+            } catch (err) {
+              console.warn("OneSignal init warning:", err);
+            }
+          });
+        }
+
+        async function requestNotificationPermission() {
+          if (window.OneSignal && window.OneSignal.Notifications) {
+            try {
+              await window.OneSignal.Notifications.requestPermission();
+              updateNotificationStatus();
+              if (Notification.permission === "granted") {
+                showToast("Push notifications enabled!", "done");
+                triggerSystemNotification(
+                  "RBE Connect Alerts Active",
+                  "You will receive instant alerts whenever new candidates apply to join RBE."
+                );
+              } else if (Notification.permission === "denied") {
+                showToast("Notifications were blocked. Please enable them in browser settings.", "warning");
+              }
+              return;
+            } catch (e) {
+              console.warn("OneSignal permission request failed, using native fallback:", e);
+            }
+          }
+
+          if (!("Notification" in window)) {
+            showToast("This browser does not support push notifications.", "error");
+            return;
+          }
+          try {
+            const perm = await Notification.requestPermission();
+            updateNotificationStatus();
+            if (perm === "granted") {
+              showToast("Notifications enabled!", "done");
+              triggerSystemNotification(
+                "RBE Connect Alerts Active",
+                "You will receive instant alerts whenever new candidates apply to join RBE."
+              );
+            } else if (perm === "denied") {
+              showToast("Notifications were blocked. Please enable them in browser settings.", "warning");
+            }
+          } catch (err) {
+            console.error("Notification permission request failed:", err);
+          }
+        }
+
+        function setupNotifications() {
+          updateNotificationStatus();
+
+          if (notifToggleBtn && notifPopover) {
+            notifToggleBtn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const isHidden = notifPopover.classList.contains("hidden");
+              notifPopover.classList.toggle("hidden", !isHidden);
+              if (notifPopoverBackdrop) {
+                notifPopoverBackdrop.classList.toggle("hidden", !isHidden);
+              }
+              notifToggleBtn.setAttribute("aria-expanded", String(isHidden));
+              updateNotificationStatus();
+            });
+
+            if (notifPopoverBackdrop) {
+              notifPopoverBackdrop.addEventListener("click", () => {
+                notifPopover.classList.add("hidden");
+                notifPopoverBackdrop.classList.add("hidden");
+                notifToggleBtn.setAttribute("aria-expanded", "false");
+              });
+            }
+
+            document.addEventListener("click", (e) => {
+              if (!notifPopover.contains(e.target) && !notifToggleBtn.contains(e.target)) {
+                notifPopover.classList.add("hidden");
+                if (notifPopoverBackdrop) notifPopoverBackdrop.classList.add("hidden");
+                notifToggleBtn.setAttribute("aria-expanded", "false");
+              }
+            });
+
+            if (notifEnableBtn) {
+              notifEnableBtn.addEventListener("click", () => {
+                if (Notification.permission !== "granted") {
+                  requestNotificationPermission();
+                } else {
+                  showToast("Notifications are already active.", "done");
+                }
+              });
+            }
+
+            if (notifTestBtn) {
+              notifTestBtn.addEventListener("click", async () => {
+                if (Notification.permission !== "granted") {
+                  await requestNotificationPermission();
+                }
+                if (Notification.permission === "granted") {
+                  triggerSystemNotification(
+                    "Test Notification — RBE Connect",
+                    "Push & OS alert delivery is working smoothly on this device! 🚀"
+                  );
+                  showToast("Test notification sent.", "done");
+                }
+              });
+            }
+          }
+
+          // Persistent Banner Button
+          if (notifBannerEnableBtn) {
+            notifBannerEnableBtn.addEventListener("click", () => {
+              if (Notification.permission === "denied") {
+                showToast("Notifications are blocked in browser settings. Please allow notifications in site settings.", "warning");
+              } else {
+                requestNotificationPermission();
+              }
+            });
+          }
+
+          // Persistent Force Modal Buttons
+          if (notifModalEnableBtn) {
+            notifModalEnableBtn.addEventListener("click", async () => {
+              await requestNotificationPermission();
+              if (Notification.permission === "granted") {
+                if (notifForceModal) notifForceModal.classList.add("hidden");
+              }
+            });
+          }
+
+          if (notifModalDismissBtn) {
+            notifModalDismissBtn.addEventListener("click", () => {
+              sessionStorage.setItem("rbe_notif_modal_dismissed", "true");
+              if (notifForceModal) notifForceModal.classList.add("hidden");
+              showToast("You can enable notifications anytime from the banner above.", "info");
+            });
+          }
+        }
+
+        function startAutoPoll() {
+          if (autoPollTimer) clearInterval(autoPollTimer);
+          autoPollTimer = setInterval(() => {
+            if (currentToken && !document.hidden) {
+              fetchData(true, true); // silent background fetch bypassing cache
+            }
+          }, 60000);
+        }
+
+        // When tab or PWA regains focus / becomes visible, quietly refresh
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden && currentToken) {
+            fetchData(true, true);
+          }
+        });
+
         // Initialize / Session check with Stale-While-Revalidate caching
         async function init() {
           initCustomSelects();
+          setupServiceWorker();
+          setupInstallPrompts();
+          setupNotifications();
+
+          const appElem = document.getElementById("connect-app");
+          const defaultAppId = appElem ? (appElem.getAttribute("data-onesignal") || "") : "";
+          if (defaultAppId) {
+            initOneSignal(defaultAppId);
+          }
 
           if (currentToken && currentUser) {
             // 1. Stale-while-revalidate: display cached data instantly (<15ms)
@@ -1081,6 +1779,10 @@ const formsApi =
           loadingEl.classList.add("hidden");
           dashboardScreen.classList.add("hidden");
           authScreen.classList.remove("hidden");
+          if (autoPollTimer) {
+            clearInterval(autoPollTimer);
+            autoPollTimer = null;
+          }
         }
 
         function showDashboard() {
@@ -1090,6 +1792,8 @@ const formsApi =
           if (userDisplay && currentUser) {
             userDisplay.textContent = currentUser.name + (currentUser.role ? " (" + currentUser.role + ")" : "");
           }
+          startAutoPoll();
+          updateNotificationStatus();
         }
 
         // Login Submit
@@ -1105,6 +1809,9 @@ const formsApi =
           try {
             const res = await apiPost({ action: "login", email, password });
             if (res.ok && res.token) {
+              if (res.oneSignalAppId) {
+                initOneSignal(res.oneSignalAppId);
+              }
               currentToken = res.token;
               currentUser = res.user;
               sessionStorage.setItem("rbe_connect_token", currentToken);
@@ -1170,8 +1877,13 @@ const formsApi =
               bypassCache: Boolean(bypassCache),
             });
             if (res.ok) {
+              if (res.oneSignalAppId) {
+                initOneSignal(res.oneSignalAppId);
+              }
+              const previousApps = rawData.applications || [];
+              const incomingApps = sortDescending(res.applications || []);
               rawData = {
-                applications: sortDescending(res.applications || []),
+                applications: incomingApps,
                 subscribers: sortDescending(res.subscribers || []),
                 contactMessages: sortDescending(res.contactMessages || []),
               };
@@ -1181,6 +1893,26 @@ const formsApi =
               updateMetrics();
               renderApplications();
               renderSubscribers();
+
+              // Detect new incoming applications and trigger notification
+              if (previousApps.length > 0 && incomingApps.length > previousApps.length) {
+                const prevKeys = new Set(previousApps.map((a) => a.id || (a.timestamp + "_" + a.email)));
+                const newApps = incomingApps.filter((a) => !prevKeys.has(a.id || (a.timestamp + "_" + a.email)));
+                if (newApps.length === 1) {
+                  const c = newApps[0];
+                  const org = c.organization || c.organizationType || "Candidate";
+                  triggerSystemNotification(
+                    "New Member Application: " + c.name,
+                    c.name + " (" + org + ") just applied to join RBE!"
+                  );
+                } else if (newApps.length > 1) {
+                  triggerSystemNotification(
+                    newApps.length + " New Member Applications!",
+                    newApps.map((a) => a.name).slice(0, 3).join(", ") + (newApps.length > 3 ? " and others" : "") + " applied to join RBE."
+                  );
+                }
+              }
+
               if (!isBackground) {
                 showToast("Data refreshed.", "done");
               }

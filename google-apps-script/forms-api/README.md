@@ -5,16 +5,24 @@ One **spreadsheet-bound** Apps Script Web App · three tabs (`Join`, `Newsletter
 
 This is **not** a Google Form. You create a Google Sheet, open **Extensions → Apps Script** from that sheet, paste `Code.gs`, and deploy it as a Web App. The script is already linked to the file via `SpreadsheetApp.getActiveSpreadsheet()` — no spreadsheet ID to copy around. The website POSTs JSON; the script appends a row and (for join) sends emails. Visitors cannot read, edit, or delete sheet data through the API.
 
-## What you need to set
+## Dynamic Configuration (`Config` Sheet Tab)
 
-Edit the `CONFIG` object at the top of [`Code.gs`](./Code.gs) — nothing lives in Script Properties.
+Configuration can be managed directly in the **`Config` sheet tab** of your spreadsheet (created automatically via `setupSpreadsheet()` or upon first run).
+
+**Why use the `Config` tab?**
+- **Instant updates without redeployment:** You can change notification emails or OneSignal credentials anytime directly in the sheet. Updates take effect within 60 seconds (cached via `CacheService` to protect quota) without creating a new Web App deployment version.
+- **Secrecy & Privacy:** Private OneSignal API keys and officer email addresses remain safely stored inside your private Google Sheet rather than committed to a public git repository.
 
 | Key | Purpose | Default |
 |-----|---------|---------|
-| `clubNotifyEmail` | Where club join alerts go (also CC on applicant mail) | `info@rotaractblreast.org` |
-| `replyToEmail` | Reply-To on the applicant thank-you (comma-separated OK). Always the club inbox — not the Apps Script owner account that appears as From. | `info@rotaractblreast.org` |
+| `clubNotifyEmail` | Where club join alerts go (also CC on applicant mail) | `rotaractblreast@gmail.com` |
+| `replyToEmail` | Reply-To on the applicant thank-you (comma-separated OK). Always the club inbox — not the Apps Script owner account that appears as From. | `rotaractblreast@gmail.com` |
+| `oneSignalAppId` | OneSignal App ID (from onesignal.com dashboard) | *(empty)* |
+| `oneSignalApiKey` | OneSignal REST API Key (Settings -> Keys & IDs) - secret | *(empty)* |
 | `mailFromName` | Display name on outbound mail | `Rotaract Bangalore East` |
 | `allowedOrigins` | Soft browser Origin/Referer allow-list (comma-separated). Set `""` to skip. | production + local Astro |
+
+Fallback values are also maintained in the `CONFIG` constant at the top of [`Code.gs`](./Code.gs) if the sheet tab is ever inaccessible.
 
 No `SPREADSHEET_ID`. No form secret. Spam control is honeypot + timing + rate limit + validation (+ soft origin allow-list).
 
@@ -224,6 +232,34 @@ After adding `Dashboard.gs` and updating `Code.gs`:
 2. Click the **Edit (pencil icon)** on the active Web App deployment.
 3. Under **Version**, choose **New version**.
 4. Click **Deploy**.
+
+## PWA & Notifications Architecture
+
+The Reviewer Portal (`/connect/`) operates as a Progressive Web App (PWA) with two notification tiers:
+
+### Tier 1: In-App & Background Polling (No External Accounts Required)
+- When reviewers have the portal open or installed on their device (active, minimized, or in background):
+  - The client automatically polls the Apps Script API every 60 seconds.
+  - When new submissions appear, the scoped Service Worker (`/connect-sw.js`) triggers native OS notification banners (`New Member Application: [Name]`) and plays a dual-frequency audio chime via Web Audio API.
+  - Tapping the banner immediately brings the reviewer to the candidate's card.
+  - In addition, `Code.gs` instantly sends the full application to `clubNotifyEmail`.
+
+### Tier 2: Cold / Remote Push Notifications (When PWA is Completely Closed)
+If reviewers have their phones locked and haven't opened the portal in days, a web browser PWA requires Apple (APNs) or Google (FCM) push servers to wake up the device.
+
+RBE Connect uses **OneSignal Web Push** for native, seamless delivery:
+- **Zero extra apps for reviewers:** Reviewers only install the **RBE Connect** PWA.
+- When they click "Enable Notifications" inside RBE Connect, the browser registers directly with Apple/Google push servers.
+- When a candidate applies, `Code.gs` calls the OneSignal REST API using the credentials from the `Config` sheet tab.
+- An alert from **RBE Connect** pops up directly on their lock screen. Tapping it opens the candidate's card.
+
+**Setup in 2 minutes:**
+1. Create a free account at [onesignal.com](https://onesignal.com) (free forever up to 10,000 web push subscribers).
+2. Create a Web Push app with your site URL (`https://rotaractblreast.org`).
+3. In your Google Sheet's **`Config`** tab:
+   - Enter `oneSignalAppId` (your App ID).
+   - Enter `oneSignalApiKey` (your REST API Key from Settings → Keys & IDs).
+4. That's it! No code changes or redeployments needed.
 
 ## Limits / gotchas
 

@@ -33,18 +33,112 @@
  */
 var CONFIG = {
   // Inbox that receives the full application (and is CC'd on the thank-you).
-  clubNotifyEmail: "info@rotaractblreast.org",
+  clubNotifyEmail: "rotaractblreast@gmail.com",
   // Where applicants land when they hit Reply on the thank-you.
-  // Comma-separated is fine, e.g. "info@…,membership@…".
+  // Comma-separated is fine if notifying multiple addresses.
   // Kept separate from clubNotifyEmail so you can notify one mailbox
   // but still accept replies on the public club address.
-  replyToEmail: "info@rotaractblreast.org",
+  replyToEmail: "rotaractblreast@gmail.com",
   mailFromName: "Rotaract Bangalore East",
   // Soft browser Origin/Referer allow-list. Empty string = skip the check.
   // Include every host that serves the join form. After editing, redeploy the Web App
   // (new version) — saving Code.gs alone does not update the live /exec URL.
   allowedOrigins: "https://rotaractblreast.org,http://localhost:4321",
+  // OneSignal Web Push credentials (optional — keep in the "Config" sheet tab for secrecy)
+  oneSignalAppId: "",
+  oneSignalApiKey: "",
 };
+
+/**
+ * Read configuration with priority:
+ * 1) "Config" sheet tab in the Google Sheet (allows instant edits without redeploying Web App)
+ * 2) Fallback to hardcoded CONFIG constant (base defaults)
+ *
+ * Caches in ScriptCache for 60 seconds to balance instant updates with Google Sheets quota.
+ */
+function getConfig_() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get("rbe_sheet_config");
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch (e) {}
+  }
+
+  var cfg = {};
+  for (var k in CONFIG) {
+    cfg[k] = CONFIG[k];
+  }
+
+  try {
+    var ss = spreadsheet_();
+    var sh = ensureConfigSheet_(ss);
+    var rows = sh.getDataRange().getValues();
+    for (var i = 1; i < rows.length; i++) {
+      var key = String(rows[i][0] == null ? "" : rows[i][0]).trim();
+      var val = String(rows[i][1] == null ? "" : rows[i][1]).trim();
+      if (key) {
+        cfg[key] = val;
+      }
+    }
+    cache.put("rbe_sheet_config", JSON.stringify(cfg), 60);
+  } catch (err) {
+    Logger.log("Using fallback CONFIG due to sheet read error: " + err);
+  }
+
+  return cfg;
+}
+
+/**
+ * Ensure the "Config" sheet tab exists with default keys and descriptions.
+ * Headers: Key | Value | Description
+ */
+function ensureConfigSheet_(ss) {
+  var name = "Config";
+  var sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.appendRow(["Key", "Value", "Description"]);
+    sh.appendRow([
+      "clubNotifyEmail",
+      CONFIG.clubNotifyEmail || "rotaractblreast@gmail.com",
+      "Email(s) receiving the full application alert (comma-separated OK)"
+    ]);
+    sh.appendRow([
+      "replyToEmail",
+      CONFIG.replyToEmail || "rotaractblreast@gmail.com",
+      "Reply-To address on applicant thank-you emails"
+    ]);
+    sh.appendRow([
+      "oneSignalAppId",
+      CONFIG.oneSignalAppId || "",
+      "OneSignal App ID (from onesignal.com Settings -> Keys & IDs)"
+    ]);
+    sh.appendRow([
+      "oneSignalApiKey",
+      CONFIG.oneSignalApiKey || "",
+      "OneSignal REST API Key (Settings -> Keys & IDs) - kept secret in this sheet"
+    ]);
+    sh.appendRow([
+      "mailFromName",
+      CONFIG.mailFromName || "Rotaract Bangalore East",
+      "From display name on outbound emails"
+    ]);
+    sh.appendRow([
+      "allowedOrigins",
+      CONFIG.allowedOrigins || "https://rotaractblreast.org,http://localhost:4321",
+      "Allowed browser origins for form submissions"
+    ]);
+
+    try {
+      sh.getRange(1, 1, 1, 3).setFontWeight("bold").setBackground("#f0e4da");
+      sh.setColumnWidth(1, 180);
+      sh.setColumnWidth(2, 340);
+      sh.setColumnWidth(3, 420);
+    } catch (e) {}
+  }
+  return sh;
+}
 
 var FORMS = {
   join: {
@@ -148,6 +242,7 @@ function doPost(e) {
 
     if (form === "join") {
       sendJoinEmails_(body);
+      sendJoinPushNotification_(body);
     }
 
     return ok_(form);
@@ -251,7 +346,8 @@ function checkAntiSpam_(e, body) {
 
   // 4) Soft origin check (browsers only; curl can forge — defense in depth)
   var origin = header_(e, "Origin") || header_(e, "Referer") || "";
-  var allow = CONFIG.allowedOrigins || "";
+  var cfg = getConfig_();
+  var allow = cfg.allowedOrigins || "";
   if (origin && allow) {
     var okOrigin = allow.split(",").some(function (o) {
       o = o.trim();
@@ -354,9 +450,10 @@ var BRAND_LINE = "#dcc2ae";
 var BRAND_CANVAS = "#fff8f5";
 
 function sendJoinEmails_(body) {
-  var club = CONFIG.clubNotifyEmail || "info@rotaractblreast.org";
-  var replyTo = clubReplyTo_();
-  var fromName = CONFIG.mailFromName || "Rotaract Bangalore East";
+  var cfg = getConfig_();
+  var club = cfg.clubNotifyEmail || "rotaractblreast@gmail.com";
+  var replyTo = clubReplyTo_(cfg);
+  var fromName = cfg.mailFromName || "Rotaract Bangalore East";
   var name = str_(body.name);
   var email = str_(body.email);
 
@@ -377,19 +474,81 @@ function sendJoinEmails_(body) {
     cc: club,
     replyTo: replyTo,
     subject: "We got your application - " + name + " - Rotaract Bangalore East",
-    body: applicantConfirmBody_(body, replyTo),
-    htmlBody: applicantConfirmHtml_(body, replyTo),
+    body: applicantConfirmBody_(body, replyTo, cfg),
+    htmlBody: applicantConfirmHtml_(body, replyTo, cfg),
     name: fromName,
   });
+}
+
+/**
+ * Sends an instant push alert to reviewers via OneSignal Web Push.
+ * Only fires if oneSignalAppId and oneSignalApiKey are configured in the "Config" sheet.
+ * Reviewers receive lock-screen push notifications directly through the RBE Connect PWA.
+ */
+function sendJoinPushNotification_(body) {
+  var cfg = getConfig_();
+  var appId = String(cfg.oneSignalAppId || "").trim();
+  var apiKey = String(cfg.oneSignalApiKey || "").trim();
+  if (!appId || !apiKey) return;
+
+  try {
+    var candidateName = str_(body.name) || "Applicant";
+    var org = str_(body.organization || body.organizationType || "");
+    var summary = org ? candidateName + " (" + org + ")" : candidateName;
+
+    var authHeader = apiKey;
+    if (authHeader.indexOf("Basic ") !== 0 && authHeader.indexOf("Key ") !== 0) {
+      authHeader = "Key " + authHeader;
+    }
+
+    var payload = {
+      app_id: appId,
+      included_segments: ["Total Subscriptions"],
+      headings: { en: "New Member Application" },
+      contents: { en: summary + " has submitted an application to join Rotaract Bangalore East." },
+      url: "https://rotaractblreast.org/connect/",
+      web_buttons: [
+        { id: "review-btn", text: "Review Application", url: "https://rotaractblreast.org/connect/" }
+      ]
+    };
+
+    var response = UrlFetchApp.fetch("https://onesignal.com/api/v1/notifications", {
+      method: "post",
+      contentType: "application/json; charset=utf-8",
+      headers: {
+        "Authorization": authHeader
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+
+    Logger.log("OneSignal push response: " + response.getResponseCode() + " " + response.getContentText());
+  } catch (err) {
+    Logger.log("OneSignal push notification failed: " + err);
+  }
+}
+
+/**
+ * One-click push test helper: run from Apps Script editor to verify OneSignal push delivery.
+ */
+function testPushNotification() {
+  var cfg = getConfig_();
+  sendJoinPushNotification_({
+    name: "Sample Applicant",
+    organization: "Bangalore University",
+    organizationType: "Student"
+  });
+  Logger.log("Test push dispatched via OneSignal App ID: " + (cfg.oneSignalAppId || "None configured"));
 }
 
 /**
  * Reply-To for the applicant thank-you: replyToEmail, plus clubNotifyEmail if different.
  * Deduped, comma-joined — MailApp accepts multiple Reply-To addresses that way.
  */
-function clubReplyTo_() {
-  var primary = CONFIG.replyToEmail || CONFIG.clubNotifyEmail || "info@rotaractblreast.org";
-  var notify = CONFIG.clubNotifyEmail || "";
+function clubReplyTo_(cfg) {
+  cfg = cfg || getConfig_();
+  var primary = cfg.replyToEmail || cfg.clubNotifyEmail || "rotaractblreast@gmail.com";
+  var notify = cfg.clubNotifyEmail || "";
   var seen = {};
   var out = [];
   (primary + "," + notify).split(",").forEach(function (part) {
@@ -454,8 +613,9 @@ function clubNotifyBody_(body) {
   return lines.join("\n");
 }
 
-function applicantConfirmBody_(body, replyTo) {
-  var clubInbox = (replyTo || CONFIG.replyToEmail || "info@rotaractblreast.org").split(",")[0].trim();
+function applicantConfirmBody_(body, replyTo, cfg) {
+  cfg = cfg || getConfig_();
+  var clubInbox = (replyTo || cfg.replyToEmail || "rotaractblreast@gmail.com").split(",")[0].trim();
   return [
     "Hi " + str_(body.name) + ",",
     "",
@@ -536,7 +696,7 @@ function emailShell_(headline, innerHtml, footerNote) {
       ';">UNITE &middot; RISE &middot; EMPOWER</p>',
     '<p style="margin:0;">Rotaract Bangalore East &middot; Bangalore, India<br>',
     '<a href="' + SITE_URL + '" style="color:#8e4e00;">rotaractblreast.org</a> &middot; ',
-    '<a href="mailto:info@rotaractblreast.org" style="color:#8e4e00;">info@rotaractblreast.org</a></p>',
+    '<a href="mailto:rotaractblreast@gmail.com" style="color:#8e4e00;">rotaractblreast@gmail.com</a></p>',
     "</td></tr>",
 
     "</table></td></tr></table></body></html>",
@@ -599,8 +759,9 @@ function contactButtons_(phone, name) {
   );
 }
 
-function applicantConfirmHtml_(body, replyTo) {
-  var clubInbox = (replyTo || CONFIG.replyToEmail || "info@rotaractblreast.org").split(",")[0].trim();
+function applicantConfirmHtml_(body, replyTo, cfg) {
+  cfg = cfg || getConfig_();
+  var clubInbox = (replyTo || cfg.replyToEmail || "rotaractblreast@gmail.com").split(",")[0].trim();
   var inner = [
     '<p style="margin:0 0 14px 0;">Hi ' + esc_(str_(body.name)) + ",</p>",
     '<p style="margin:0 0 14px 0;">Thank you for applying to join <strong>Rotaract Bangalore East</strong> (Easterners).</p>',
@@ -784,6 +945,7 @@ function setupSpreadsheet() {
   if (typeof ensureReviewersSheet_ === "function") {
     ensureReviewersSheet_(ss);
   }
+  ensureConfigSheet_(ss);
   var joinSh = ss.getSheetByName("Join");
   if (joinSh && typeof ensureJoinHeaders_ === "function") {
     ensureJoinHeaders_(joinSh);
@@ -792,5 +954,5 @@ function setupSpreadsheet() {
   var def = ss.getSheetByName("Sheet1");
   if (def && ss.getSheets().length > 1) ss.deleteSheet(def);
   Logger.log("Sheets ready on: " + ss.getUrl());
-  Logger.log("Tabs: Join, Newsletter, Contact, Reviewers");
+  Logger.log("Tabs: Join, Newsletter, Contact, Reviewers, Config");
 }
