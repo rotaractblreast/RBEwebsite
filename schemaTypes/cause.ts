@@ -41,7 +41,7 @@ export const cause = defineType({
       title: "SEO / social summary",
       type: "text",
       description:
-        "Used for meta description and Open Graph. Also used as the page body if Body is empty. Prefer a distinct short summary when Intro is already filled.",
+        "Short summary for search engines, WhatsApp/social previews, and Open Graph. Ideal length: 120-155 characters. Also used as page body if Body is empty.",
     }),
     defineField({
       name: "bodyMarkdown",

@@ -34,7 +34,10 @@ export async function getStaticPaths() {
 
 const { title, posts } = Astro.props;
 ---
-<BaseLayout title={`${title} - News`} description={`News archive: ${title}`}>
+<BaseLayout
+  title={`${title} - News`}
+  description={`Read community news, service projects, and club stories from ${title} by Rotaract Bangalore East.`}
+>
   <PageHero title={title} eyebrow="News archive" />
   <Breadcrumbs
     crumbs={[{ label: "Home", href: "/" }, { label: "News", href: "/news/" }, { label: title }]}

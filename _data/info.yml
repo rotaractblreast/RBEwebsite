@@ -1,7 +1,7 @@
 email: info@rotaractblreast.org
 phone: +91 85537 88515
 
-location: Bangalore, India
+location: Bengaluru, Karnataka, India
 
 site_social:
   facebook: https://www.facebook.com/rotaractblreast/
@@ -47,15 +47,15 @@ partners:
 welcomeSection:
   - title: UNITE
     icon: flaticon-profile
-    brief: We are a family and family means no one gets left behind or forgotten.
+    brief: We are a family, and family means no one gets left behind or forgotten.
     target: /news
   - title: RISE
     icon: flaticon-diamond
-    brief: With the Unity we RISE by learning from each other's spirit of Rotaracton.
+    brief: With unity, we rise by learning from each other in the true spirit of Rotaract.
     target: /news
   - title: EMPOWER
     icon: flaticon-donation
-    brief: With the Unity we Rise and Empower the Community around Us.
+    brief: With unity, we rise and empower the community around us.
     target: /news
 
 coreValues:
@@ -93,7 +93,7 @@ areasoffocus:
     description: We carry out service projects that enhance economic and community development and create opportunities for decent and productive work for young and old.
   - title: Protecting the environment
     icon: flaticon-circle
-    description: We are tackling environmental issues the seriously and working towards betterment of the community around us
+    description: We tackle environmental issues seriously and work towards the betterment of the community around us.
 
 # stats:
 #   - title: Areas of Focus
@@ -187,7 +187,7 @@ authors:
   rbe:
     display_name: Rotaract Bangalore East
     image: /images/site/rbe.png
-    description: We the members of Rotaract Bangalore East (Easterners) follow the motto UNITE to RISE and EMPOWER.
+    description: We, the members of Rotaract Bangalore East (Easterners), follow the motto UNITE, RISE, and EMPOWER.
 
 # buttons:
 #   - one

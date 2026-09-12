@@ -1,15 +1,15 @@
 export const SITE = {
   title: "Rotaract Bangalore East",
-  subtitle: "Unite . Rise . Empower",
+  subtitle: "Unite. Rise. Empower.",
   description:
-    "Rotaract Bangalore East is a community-based club in Bangalore. Through its service activities, RBE aims to create a positive social impact and experience the joy of giving back to the community.",
+    "Rotaract Bangalore East is a voluntary youth organization in Bangalore for young adults 18+. Join us for leadership, service, and fellowship.",
   url: "https://rotaractblreast.org",
   ogImage: "/images/site/ogimage.png",
   gaId: "G-LYQWP4N6TE",
   timezone: "Asia/Kolkata",
 } as const;
 
-/** Primary header nav — kept in code (not Sanity). Trailing slashes match site routing. */
+/** Primary header nav - kept in code (not Sanity). Trailing slashes match site routing. */
 export const PRIMARY_NAV = [
   { title: "Home", url: "/" },
   { title: "About", url: "/about/" },

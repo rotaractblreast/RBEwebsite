@@ -21,7 +21,8 @@ export async function getStaticPaths() {
 
 const { cause } = Astro.props;
 const dueLabel = cause.due ? formatDate(cause.due, { month: "short", day: "numeric", year: "numeric" }) : "Ongoing";
-const summary = cause.description || cause.intro;
+const fallbackCauseSummary = `${cause.title} - A community service and social impact cause by Rotaract Bangalore East in Bengaluru.`;
+const summary = (cause.description || cause.intro || fallbackCauseSummary).trim();
 const crumbs = [
   { label: "Home", href: "/" },
   { label: "Causes", href: "/causes/" },

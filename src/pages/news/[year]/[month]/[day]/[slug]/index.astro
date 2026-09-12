@@ -44,10 +44,12 @@ const crumbs = [
   { label: "News", href: "/news/" },
   { label: post.title },
 ];
+const fallbackPostSummary = `${post.title} - News story and community project update from Rotaract Bangalore East (Easterners).`;
+const postDescription = (post.description || fallbackPostSummary).trim();
 const jsonLd = [
   newsArticleJsonLd({
     title: post.title,
-    description: post.description,
+    description: postDescription,
     url: post.url,
     publishedAt: post.publishedAt,
     image: post.image,
@@ -57,7 +59,7 @@ const jsonLd = [
 ---
 <BaseLayout
   title={post.title}
-  description={post.description}
+  description={postDescription}
   image={post.image}
   imageAlt={post.title}
   ogType="article"

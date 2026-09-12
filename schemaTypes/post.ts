@@ -45,7 +45,7 @@ export const post = defineType({
       title: "Card teaser & search/social summary",
       type: "text",
       description:
-        "Short summary for news cards, meta description, Open Graph, and RSS. Not shown as the article body — use Body for that.",
+        "Short summary for news cards, meta description, Open Graph, and RSS. Ideal length: 120-155 characters. Not shown as the article body (use Body for that).",
     }),
     defineField({
       name: "bodyMarkdown",

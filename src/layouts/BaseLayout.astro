@@ -27,6 +27,7 @@ interface Props {
   canonicalPath?: string;
   jsonLd?: object | object[] | null;
   scripts?: string[];
+  preloadImage?: string;
 }
 
 const {
@@ -41,10 +42,11 @@ const {
   canonicalPath,
   jsonLd = null,
   scripts = [],
+  preloadImage,
 } = Astro.props;
 
 const settings = await getSiteSettings();
-const pageTitle = title ? `${title} | ${SITE.title}` : `${SITE.title} - ${SITE.subtitle}`;
+const pageTitle = title ? `${title} | ${SITE.title}` : `${SITE.title} (Easterners) - ${SITE.subtitle}`;
 const path = canonicalPath ?? Astro.url.pathname;
 const canonical = new URL(path, SITE.url).href;
 const usingDefaultOg = !image;
@@ -91,14 +93,11 @@ const articleModified = modifiedTime || publishedTime;
     <meta name="twitter:image" content={ogImage} />
     <meta name="twitter:image:alt" content={ogAlt} />
     <link rel="shortcut icon" href="/images/site/favicon.png" type="image/x-icon" />
+    {preloadImage && <link rel="preload" as="image" href={preloadImage} fetchpriority="high" />}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap"
       rel="stylesheet"
     />
     <link rel="alternate" type="application/rss+xml" title={SITE.title} href="/rss.xml" />

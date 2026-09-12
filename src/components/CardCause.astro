@@ -1,21 +1,24 @@
 ---
 import type { Cause } from "../lib/types";
 import { formatInrCurrency } from "../lib/format";
+import { urlForCardImage } from "../lib/content";
 
 interface Props {
   cause: Cause;
 }
 const { cause } = Astro.props;
+const cardImage = urlForCardImage(cause.image);
 ---
 <article class="card card-lift group flex flex-col">
   <a href={cause.url} class="block aspect-[16/10] overflow-hidden bg-surface-container">
     {
-      cause.image && (
+      cardImage && (
         <img
-          src={cause.image}
+          src={cardImage}
           alt={cause.title}
           class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
+          decoding="async"
           width="750"
           height="420"
         />

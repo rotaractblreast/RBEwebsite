@@ -132,9 +132,11 @@ export function loadCausesFromFs(): Cause[] {
   });
 }
 
+let cachedSiteSettings: SiteSettings | null = null;
 export function loadSiteSettingsFromFs(): SiteSettings {
+  if (cachedSiteSettings) return cachedSiteSettings;
   const info = loadYaml<Record<string, unknown>>("_data/info.yml");
-  return {
+  cachedSiteSettings = {
     email: String(info.email ?? ""),
     phone: String(info.phone ?? ""),
     location: String(info.location ?? ""),
@@ -142,11 +144,14 @@ export function loadSiteSettingsFromFs(): SiteSettings {
     coreValues: (info.coreValues as SiteSettings["coreValues"]) ?? [],
     areasOfFocus: (info.areasoffocus as SiteSettings["areasOfFocus"]) ?? [],
   };
+  return cachedSiteSettings;
 }
 
+let cachedTeam: TeamMember[] | null = null;
 export function loadTeamFromFs(): TeamMember[] {
+  if (cachedTeam) return cachedTeam;
   const data = loadYaml<{ members?: Array<Record<string, unknown>> }>("_data/team.yml");
-  return (data.members ?? []).map((m) => ({
+  cachedTeam = (data.members ?? []).map((m) => ({
     name: String(m.name ?? ""),
     role: String(m.role ?? ""),
     memberSince: m.member_since ? String(m.member_since) : undefined,
@@ -154,24 +159,31 @@ export function loadTeamFromFs(): TeamMember[] {
     featurelink: m.featurelink ? String(m.featurelink) : undefined,
     social: (m.social as Record<string, string>) ?? {},
   }));
+  return cachedTeam;
 }
 
+let cachedJoinFaq: Array<{ question: string; answer: string }> | null = null;
 export function loadJoinFaqFromFs(): Array<{ question: string; answer: string }> {
+  if (cachedJoinFaq) return cachedJoinFaq;
   const data = loadYaml<unknown>("_data/join_faq.yml");
   if (Array.isArray(data)) {
-    return data.map((i: Record<string, string>) => ({
+    cachedJoinFaq = data.map((i: Record<string, string>) => ({
+      question: String(i.question ?? ""),
+      answer: String(i.answer ?? ""),
+    }));
+  } else {
+    const obj = data as { items?: Array<Record<string, string>> };
+    cachedJoinFaq = (obj.items ?? []).map((i) => ({
       question: String(i.question ?? ""),
       answer: String(i.answer ?? ""),
     }));
   }
-  const obj = data as { items?: Array<Record<string, string>> };
-  return (obj.items ?? []).map((i) => ({
-    question: String(i.question ?? ""),
-    answer: String(i.answer ?? ""),
-  }));
+  return cachedJoinFaq;
 }
 
+let cachedBrandKit: BrandKitGroup[] | null = null;
 export function loadBrandKitFromFs(): BrandKitGroup[] {
+  if (cachedBrandKit) return cachedBrandKit;
   const data = loadYaml<{
     groups?: Array<{
       group_name: string;
@@ -184,7 +196,7 @@ export function loadBrandKitFromFs(): BrandKitGroup[] {
       }>;
     }>;
   }>("_data/brandkit.yml");
-  return (data.groups ?? []).map((g) => ({
+  cachedBrandKit = (data.groups ?? []).map((g) => ({
     groupName: g.group_name,
     items: (g.items_list ?? []).map((it) => ({
       title: it.title,
@@ -194,4 +206,5 @@ export function loadBrandKitFromFs(): BrandKitGroup[] {
       white: it.white,
     })),
   }));
+  return cachedBrandKit;
 }

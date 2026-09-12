@@ -30,7 +30,7 @@ export const event = defineType({
       title: "SEO / social summary",
       type: "text",
       description:
-        "Used for meta description, Open Graph, and JSON-LD. Also used as the page body if Body is empty. Prefer a distinct short summary when Intro is already filled.",
+        "Short summary for Google search, WhatsApp/social sharing, and JSON-LD. Ideal length: 120-155 characters. Lead with what the event is, date/venue, and why to attend. Used as page body if Body is empty.",
     }),
     defineField({
       name: "bodyMarkdown",

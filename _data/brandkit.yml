@@ -61,19 +61,19 @@ groups:
         preview: /images/brandkit/RBEoriginal.png
         file: /images/brandkit/RBEoriginal.png
       - title: Rotaract Bangalore East Logo - Black
-        description: Black version of Rotaract Bagnalore East Logo
+        description: Black version of Rotaract Bangalore East Logo
         preview: /images/brandkit/RBEblack.png
         file: /images/brandkit/RBEblack.png
       - title: Rotaract Bangalore East Logo - Blue
-        description: Blue version of Rotaract Bagnalore East Logo
+        description: Blue version of Rotaract Bangalore East Logo
         preview: /images/brandkit/RBEblue.png
         file: /images/brandkit/RBEblue.png
       - title: Rotaract Bangalore East Logo - Red
-        description: Red version of Rotaract Bagnalore East Logo
+        description: Red version of Rotaract Bangalore East Logo
         preview: /images/brandkit/RBEred.png
         file: /images/brandkit/RBEred.png
       - title: Rotaract Bangalore East Logo - White
-        description: White version of Rotaract Bagnalore East Logo
+        description: White version of Rotaract Bangalore East Logo
         preview: /images/brandkit/RBEwhite.png
         file: /images/brandkit/RBEwhite.png
         white: true

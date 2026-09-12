@@ -77,7 +77,27 @@
     gtag("js", new Date());
     gtag("config", gaId);
   }
-  loadAnalytics();
+
+  function scheduleAnalytics() {
+    var scheduled = false;
+    function trigger() {
+      if (scheduled) return;
+      scheduled = true;
+      ["scroll", "mousemove", "touchstart", "keydown"].forEach(function (ev) {
+        window.removeEventListener(ev, trigger);
+      });
+      loadAnalytics();
+    }
+    ["scroll", "mousemove", "touchstart", "keydown"].forEach(function (ev) {
+      window.addEventListener(ev, trigger, { passive: true, once: true });
+    });
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(trigger, { timeout: 2500 });
+    } else {
+      window.setTimeout(trigger, 2500);
+    }
+  }
+  scheduleAnalytics();
 
   var searchOverlay = document.getElementById("search-overlay");
   var searchOpeners = document.querySelectorAll("[data-search-open]");
@@ -246,10 +266,36 @@
     }
   });
 
-  document.addEventListener("click", function () {
-    closeShareMenus();
-  });
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") closeShareMenus();
-  });
+  // Dynamic auto-expansion for textareas as users type multiline content
+  function initAutoExpandTextareas() {
+    document.querySelectorAll("textarea").forEach(function (textarea) {
+      if (textarea.dataset.autoExpandInit) return;
+      textarea.dataset.autoExpandInit = "true";
+
+      function adjust() {
+        if (!textarea.offsetParent && textarea.scrollHeight === 0) return;
+        textarea.style.height = "auto";
+        var scrollH = textarea.scrollHeight;
+        if (scrollH > 0) {
+          if (scrollH > 480) {
+            textarea.style.height = "480px";
+            textarea.style.overflowY = "auto";
+          } else {
+            textarea.style.height = scrollH + "px";
+            textarea.style.overflowY = "hidden";
+          }
+        }
+      }
+
+      textarea.addEventListener("input", adjust);
+      textarea.addEventListener("focus", adjust);
+      textarea.addEventListener("change", adjust);
+      adjust();
+    });
+  }
+
+  initAutoExpandTextareas();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAutoExpandTextareas);
+  }
 })();

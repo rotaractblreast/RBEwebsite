@@ -15,12 +15,19 @@ const preview = 7;
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "NGO",
-  name: SITE.title,
+  name: "Rotaract Club of Bangalore East",
+  alternateName: ["Rotaract Bangalore East", "RBE", "Easterners"],
   url: SITE.url,
   email: settings.email,
   telephone: settings.phone,
   foundingDate: "1975-01-17",
   slogan: SITE.subtitle,
+  description:
+    "Rotaract Club of Bangalore East (Easterners) is a voluntary youth organization in Bangalore for young adults 18+. Dedicated to community service, leadership, and fellowship.",
+  areaServed: {
+    "@type": "City",
+    name: "Bengaluru",
+  },
   sameAs: Object.values(settings.siteSocial).filter(Boolean),
 };
 
@@ -57,34 +64,47 @@ function memberLinks(social: TeamMember["social"]): MemberLink[] {
 }
 ---
 <BaseLayout
-  title="About"
-  description="Learn about Rotaract Bangalore East - our story, core values UNITE · RISE · EMPOWER, team, and how we serve the community in Bangalore."
+  title="About Us"
+  description="Learn about Rotaract Club of Bangalore East (Easterners), established in 1975 and rechartered in 2019. A voluntary youth organization for young adults 18+."
   jsonLd={jsonLd}
 >
   <PageHero
     title="About Rotaract Bangalore East"
-    eyebrow="Our story · Since 1975"
-    lead="Established 17 January 1975 and rechartered 19 July 2019. A family with a mission: UNITE · RISE · EMPOWER."
+    eyebrow="Our Story · Since 1975"
+    lead="A voluntary youth organization dedicated to leadership development, meaningful community service, and lifelong fellowship."
   />
   <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "About" }]} />
 
-  <section class="section-pad">
+  <section class="section-pad pb-6">
     <div class="wrap max-w-3xl">
-      <p class="text-body-lg text-on-surface-variant mb-4">
-        Rotaract Bangalore East is a community-based club from Bangalore. We are bright, energetic, and
-        motivated youngsters creating positive change in society.
+      <p class="text-body-lg text-on-surface-variant mb-6 leading-relaxed">
+        Rotaract Club of Bangalore East, known as the Easterners, is a volunteer youth organization in Bengaluru. Established on January 17, 1975, rechartered on July 19, 2019, and sponsored by Rotary Bangalore East, the club brings together young adults 18 and older to lead community initiatives, hone professional skills, and build lifelong friendships.
       </p>
+      <div class="grid sm:grid-cols-2 gap-4 my-8 p-6 rounded-2xl bg-surface-container-low border border-outline-variant/30">
+        <div>
+          <span class="block text-xs uppercase tracking-wider text-primary font-bold mb-1">Organization</span>
+          <span class="text-sm font-semibold text-on-surface">Rotaract Club of Bangalore East</span>
+        </div>
+        <div>
+          <span class="block text-xs uppercase tracking-wider text-primary font-bold mb-1">Eligibility</span>
+          <span class="text-sm font-semibold text-on-surface">Young adults aged 18+</span>
+        </div>
+        <div>
+          <span class="block text-xs uppercase tracking-wider text-primary font-bold mb-1">Charter History</span>
+          <span class="text-sm font-semibold text-on-surface">Jan 17, 1975 · Rechartered Jul 19, 2019</span>
+        </div>
+        <div>
+          <span class="block text-xs uppercase tracking-wider text-primary font-bold mb-1">Affiliation</span>
+          <span class="text-sm font-semibold text-on-surface">Rotary Bangalore East · District 3191</span>
+        </div>
+      </div>
       <p class="text-on-surface-variant mb-4">
-        <strong class="text-on-surface">UNITE:</strong> We are a family - no one gets left behind or
-        forgotten.<br />
-        <strong class="text-on-surface">RISE:</strong> With unity, we rise by learning from each other.<br
-        />
-        <strong class="text-on-surface">EMPOWER:</strong> With unity, we rise and empower the community
-        around us.
+        <strong class="text-on-surface">UNITE:</strong> We are a welcoming family where every member finds mentorship, belonging, and encouragement.<br />
+        <strong class="text-on-surface">RISE:</strong> We cultivate leadership, communication, and professional growth through hands-on responsibility.<br />
+        <strong class="text-on-surface">EMPOWER:</strong> We channel our collective energy into impactful community drives, education support, and social welfare across Bangalore.
       </p>
       <p class="text-on-surface-variant">
-        Volunteer, collaborate, and support our events and projects. Let’s experience the joy of giving
-        back. #rotaractblreast
+        Volunteer, collaborate, and support our initiatives. Let's experience the joy of giving back together.
       </p>
     </div>
   </section>

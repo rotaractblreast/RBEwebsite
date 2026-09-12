@@ -11,13 +11,38 @@ export function absoluteUrl(path: string): string {
   return new URL(path || "/", SITE.url).href;
 }
 
-/** Strip HTML and clamp for meta descriptions. */
-export function metaDescription(raw: string | undefined | null, max = 160): string {
-  return String(raw ?? "")
+/**
+ * Strip HTML and produce clean, sentence-aware, and word-boundary safe meta descriptions.
+ * - Strips HTML tags and collapses whitespace.
+ * - If the first sentence ends cleanly between 75 and `max` characters, uses it directly for complete human context.
+ * - Otherwise, breaks cleanly at the last full word before `max - 3` and appends `...`.
+ * - Cleans any trailing punctuation before adding the ellipsis.
+ */
+export function metaDescription(raw: string | undefined | null, max = 155): string {
+  const clean = String(raw ?? "")
     .replace(/<[^>]+>/g, "")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, max);
+    .trim();
+
+  if (!clean || clean.length <= max) return clean;
+
+  // Check if the first sentence ends cleanly within an ideal snippet window (75 to max chars)
+  const sentenceMatch = clean.match(/^([^.!?]+[.!?])/);
+  if (sentenceMatch) {
+    const firstSentence = sentenceMatch[1].trim();
+    if (firstSentence.length >= 75 && firstSentence.length <= max) {
+      return firstSentence;
+    }
+  }
+
+  // Otherwise, break at the last word boundary before (max - 3)
+  const target = max - 3;
+  const lastSpace = clean.lastIndexOf(" ", target);
+  const truncated = lastSpace > 50 ? clean.slice(0, lastSpace) : clean.slice(0, target);
+
+  // Clean trailing punctuation before adding ellipsis
+  const trimmed = truncated.replace(/[,;:\-\s]+$/, "");
+  return `${trimmed}...`;
 }
 
 /** Twitter @handle from a twitter.com / x.com profile URL, if any. */
@@ -129,7 +154,7 @@ export function eventJsonLd(input: {
           },
         },
     image: input.image ? [absoluteUrl(input.image)] : undefined,
-    description: metaDescription(input.description, 300),
+    description: metaDescription(input.description, 500),
     organizer: {
       "@type": "Organization",
       name: SITE.title,
@@ -150,7 +175,7 @@ export function causeWebPageJsonLd(input: {
     "@context": "https://schema.org",
     "@type": "WebPage",
     name: input.title,
-    description: metaDescription(input.description, 300),
+    description: metaDescription(input.description, 500),
     url: pageUrl,
     isPartOf: {
       "@type": "WebSite",
@@ -183,7 +208,7 @@ export function webSiteJsonLd(description?: string) {
     "@type": "WebSite",
     name: SITE.title,
     url: SITE.url,
-    description: metaDescription(description || SITE.description, 300),
+    description: metaDescription(description || SITE.description, 500),
     potentialAction: {
       "@type": "SearchAction",
       target: {

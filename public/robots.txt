@@ -3,7 +3,7 @@ Allow: /
 Disallow: /admin/
 Disallow: /connect/
 
-# Generative / answer-engine crawlers (GEO) — public pages only.
+# Generative / answer-engine crawlers (GEO) - public pages only.
 User-agent: GPTBot
 Allow: /
 Disallow: /admin/

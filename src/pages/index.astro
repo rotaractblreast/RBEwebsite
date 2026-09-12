@@ -64,20 +64,26 @@ while (mix.length < 9 && pi < posts.length) {
 }
 
 const homeDescription =
-  "Rotaract Bangalore East (RBE) - UNITE, RISE, and EMPOWER through community service in Bangalore. News, events, causes, and how to join Easterners.";
+  "Rotaract Club of Bangalore East (Easterners) is a voluntary youth organization in Bangalore for young adults 18+. Join us for leadership, service, and fellowship.";
 const jsonLd = [
   webSiteJsonLd(homeDescription),
   {
     "@context": "https://schema.org",
     "@type": "NGO",
-    name: SITE.title,
-    alternateName: ["RBE", "Easterners"],
+    name: "Rotaract Club of Bangalore East",
+    alternateName: ["Rotaract Bangalore East", "RBE", "Easterners"],
     url: SITE.url,
     logo: `${SITE.url}/images/site/rbe.png`,
     email: settings.email,
     telephone: settings.phone,
     foundingDate: "1975-01-17",
     slogan: SITE.subtitle,
+    description: homeDescription,
+    parentOrganization: {
+      "@type": "Organization",
+      name: "Rotary Bangalore East",
+      url: "https://rotaractblreast.org/about/",
+    },
     areaServed: {
       "@type": "City",
       name: "Bengaluru",
@@ -88,11 +94,18 @@ const jsonLd = [
       addressRegion: "KA",
       addressCountry: "IN",
     },
+    knowsAbout: [
+      "Youth Leadership",
+      "Community Service",
+      "Volunteering",
+      "Professional Development",
+      "Social Impact",
+    ],
     sameAs: Object.values(settings.siteSocial).filter(Boolean),
   },
 ];
 ---
-<BaseLayout description={homeDescription} jsonLd={jsonLd}>
+<BaseLayout description={homeDescription} jsonLd={jsonLd} preloadImage="/images/site/slider-4.jpg">
   <section class="relative w-full min-h-[70vh] md:min-h-[85vh] flex items-center overflow-hidden">
     <div class="absolute inset-0 z-0">
       <img
@@ -111,14 +124,24 @@ const jsonLd = [
       class="wrap relative z-10 w-full flex flex-col items-start md:items-center text-left md:text-center py-16 md:py-24"
     >
       <p
-        class="label-caps text-primary-fixed mb-6 inline-block backdrop-blur-sm bg-inverse-surface/40 px-4 py-1 rounded"
+        class="label-caps text-primary-fixed mb-4 inline-block backdrop-blur-sm bg-inverse-surface/40 px-4 py-1.5 rounded"
       >
-        A Family with a Mission · District 3191
+        Voluntary Youth Organization · Bangalore, India
       </p>
-      <h1 class="font-display text-display-hero text-white mb-6 max-w-4xl">UNITE. RISE. EMPOWER.</h1>
-      <p class="text-body-lg text-surface-container-highest mb-10 max-w-2xl">
-        Bright, energetic youngsters creating positive change in Bangalore. Join Easterners and
-        experience the joy of giving back.
+      <h1 class="font-display mb-6 max-w-4xl tracking-tight">
+        <span
+          class="block text-primary-fixed text-sm sm:text-base md:text-xl font-bold tracking-widest uppercase mb-3 drop-shadow"
+        >
+          Rotaract Club of Bangalore East
+        </span>
+        <span
+          class="block text-4xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight drop-shadow-md"
+        >
+          Unite. Rise. Empower.
+        </span>
+      </h1>
+      <p class="text-body-lg text-surface-container-highest mb-10 max-w-2xl leading-relaxed">
+        A community of young adults, college students, and working professionals united by a shared passion for leadership, meaningful service, and lifelong fellowship. Join the family of Easterners to make a lasting difference and grow together.
       </p>
       <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
         <a href="/join/" class="btn btn-primary px-8 py-4 text-base">

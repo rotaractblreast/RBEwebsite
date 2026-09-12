@@ -21,36 +21,73 @@ import type {
 
 function useFs(): boolean {
   // FS collections were removed in the Sanity cutover. Only opt in explicitly for local debugging
-  // after restoring markdown collections — never treat a missing project id as FS mode.
+  // after restoring markdown collections - never treat a missing project id as FS mode.
   const flag =
     import.meta.env.USE_FS_CONTENT ??
     (typeof process !== "undefined" ? process.env.USE_FS_CONTENT : undefined);
   return flag === "1";
 }
 
+let cachedSanityClient: ReturnType<typeof createClient> | null = null;
+let cachedImageBuilder: ReturnType<typeof imageUrlBuilder> | null = null;
+
 export function getSanityClient() {
+  if (cachedSanityClient) return cachedSanityClient;
   const projectId = import.meta.env.PUBLIC_SANITY_PROJECT_ID;
   const dataset = import.meta.env.PUBLIC_SANITY_DATASET || "production";
   if (!projectId || projectId === "placeholder") {
     throw new Error("PUBLIC_SANITY_PROJECT_ID is not set");
   }
-  return createClient({
+  cachedSanityClient = createClient({
     projectId,
     dataset,
     apiVersion: "2025-01-01",
     useCdn: false,
   });
+  return cachedSanityClient;
 }
 
-export function urlForImage(source: SanityImageSource | string | null | undefined): string | null {
+function getImageBuilder() {
+  if (cachedImageBuilder) return cachedImageBuilder;
+  cachedImageBuilder = imageUrlBuilder(getSanityClient());
+  return cachedImageBuilder;
+}
+
+export function urlForImage(
+  source: SanityImageSource | string | null | undefined,
+  width = 1200,
+): string | null {
   if (!source) return null;
-  if (typeof source === "string") return source;
+  if (typeof source === "string") {
+    if (source.includes("cdn.sanity.io")) {
+      try {
+        const url = new URL(source);
+        url.searchParams.set("auto", "format");
+        url.searchParams.set("w", String(width));
+        return url.toString();
+      } catch {
+        return source;
+      }
+    }
+    return source;
+  }
   try {
-    const client = getSanityClient();
-    return imageUrlBuilder(client).image(source).width(1600).url();
+    return getImageBuilder().image(source).width(width).auto("format").url();
   } catch {
     return null;
   }
+}
+
+export function urlForCardImage(
+  source: SanityImageSource | string | null | undefined,
+): string | null {
+  return urlForImage(source, 800);
+}
+
+export function urlForHeroImage(
+  source: SanityImageSource | string | null | undefined,
+): string | null {
+  return urlForImage(source, 1200);
 }
 
 function postUrl(publishedAt: string, slug: string) {
@@ -65,7 +102,14 @@ function postUrl(publishedAt: string, slug: string) {
   return `/news/${get("year")}/${get("month")}/${get("day")}/${slug}/`;
 }
 
+let postsPromise: Promise<Post[]> | null = null;
 export async function getPosts(): Promise<Post[]> {
+  if (postsPromise) return postsPromise;
+  postsPromise = fetchPostsInternal();
+  return postsPromise;
+}
+
+async function fetchPostsInternal(): Promise<Post[]> {
   if (useFs()) return loadPostsFromFs();
   const client = getSanityClient();
   const rows = await client.fetch<Array<Record<string, unknown>>>(
@@ -103,7 +147,7 @@ export async function getPosts(): Promise<Post[]> {
       title: String(r.title),
       slug,
       publishedAt,
-      image: urlForImage(r.image as SanityImageSource),
+      image: urlForHeroImage(r.image as SanityImageSource),
       categories,
       tags,
       description: String(r.description ?? ""),
@@ -113,7 +157,14 @@ export async function getPosts(): Promise<Post[]> {
   });
 }
 
+let eventsPromise: Promise<EventDoc[]> | null = null;
 export async function getEvents(): Promise<EventDoc[]> {
+  if (eventsPromise) return eventsPromise;
+  eventsPromise = fetchEventsInternal();
+  return eventsPromise;
+}
+
+async function fetchEventsInternal(): Promise<EventDoc[]> {
   if (useFs()) return loadEventsFromFs();
   const client = getSanityClient();
   const rows = await client.fetch<Array<Record<string, unknown>>>(
@@ -133,7 +184,7 @@ export async function getEvents(): Promise<EventDoc[]> {
       buttonOpen: Boolean(r.buttonOpen),
       buttonText: String(r.buttonText ?? ""),
       buttonUrl: String(r.buttonUrl ?? ""),
-      image: urlForImage(r.image as SanityImageSource),
+      image: urlForHeroImage(r.image as SanityImageSource),
       intro: String(r.intro ?? ""),
       description: String(r.description ?? ""),
       bodyMarkdown: String(r.bodyMarkdown ?? ""),
@@ -142,7 +193,14 @@ export async function getEvents(): Promise<EventDoc[]> {
   });
 }
 
+let causesPromise: Promise<Cause[]> | null = null;
 export async function getCauses(): Promise<Cause[]> {
+  if (causesPromise) return causesPromise;
+  causesPromise = fetchCausesInternal();
+  return causesPromise;
+}
+
+async function fetchCausesInternal(): Promise<Cause[]> {
   if (useFs()) return loadCausesFromFs();
   const client = getSanityClient();
   const rows = await client.fetch<Array<Record<string, unknown>>>(
@@ -157,7 +215,7 @@ export async function getCauses(): Promise<Cause[]> {
       title: String(r.title),
       slug,
       focus: String(r.focus ?? ""),
-      image: urlForImage(r.image as SanityImageSource),
+      image: urlForHeroImage(r.image as SanityImageSource),
       due: r.due ? String(r.due) : null,
       active: Boolean(r.active),
       goal: typeof r.goal === "number" ? r.goal : null,
@@ -177,7 +235,14 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   return loadSiteSettingsFromFs();
 }
 
+let teamPromise: Promise<TeamMember[]> | null = null;
 export async function getTeam(): Promise<TeamMember[]> {
+  if (teamPromise) return teamPromise;
+  teamPromise = fetchTeamInternal();
+  return teamPromise;
+}
+
+async function fetchTeamInternal(): Promise<TeamMember[]> {
   if (useFs()) return loadTeamFromFs();
   const client = getSanityClient();
   const doc = await client.fetch(`*[_type == "team"][0]{members[]{..., "image": image.asset->url}}`);
@@ -191,7 +256,7 @@ export async function getTeam(): Promise<TeamMember[]> {
   }));
 }
 
-/** Always from `_data/join_faq.yml` — not managed in Sanity Studio. */
+/** Always from `_data/join_faq.yml` - not managed in Sanity Studio. */
 export async function getJoinFaq(): Promise<Array<{ question: string; answer: string }>> {
   return loadJoinFaqFromFs();
 }

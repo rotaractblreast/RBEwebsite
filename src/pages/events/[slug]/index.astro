@@ -27,7 +27,10 @@ const buttonHref = event.buttonUrl?.includes("://")
       : `/${event.buttonUrl}`
     : "";
 
-const summary = event.description || event.intro;
+const datePart = event.start ? ` on ${formatDateTime(event.start)}` : "";
+const venuePart = event.venue ? ` at ${event.venue}` : "";
+const fallbackSummary = `${event.title} hosted by Rotaract Bangalore East${datePart}${venuePart}. Join Easterners for community service and fellowship.`;
+const summary = (event.description || event.intro || fallbackSummary).trim();
 const crumbs = [
   { label: "Home", href: "/" },
   { label: "Events", href: "/events/" },

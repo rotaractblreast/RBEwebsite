@@ -1,6 +1,6 @@
 [build]
   # Netlify already runs `npm ci` (from package-lock.json) in its dependency phase
-  # with cache — do not repeat it here.
+  # with cache - do not repeat it here.
   command = "npm run build"
   publish = "dist"
 
@@ -8,7 +8,7 @@
   NODE_VERSION = "20"
   # Sanity is the content source of truth. Unset / omit USE_FS_CONTENT (do not set to "1").
   # Both values are public (they ship in the client bundle), so pin them here rather than
-  # relying on site env vars — a missing project id fails the build.
+  # relying on site env vars - a missing project id fails the build.
   PUBLIC_SANITY_PROJECT_ID = "t6bu0f9m"
   PUBLIC_SANITY_DATASET = "production"
   # Apps Script Web App /exec URL (public write-only). Join form POSTs here at runtime.
@@ -50,6 +50,26 @@
     Content-Type = "application/manifest+json; charset=utf-8"
     Cache-Control = "public, max-age=3600"
 
+[[headers]]
+  for = "/_astro/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+  for = "/icons/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+  for = "/pagefind/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+
 # Critical host / path redirects only.
 # Do NOT add trailing-slash canonicals like /about → /about/: with force=true,
 # Netlify matches both /about and /about/ and loops (ERR_TOO_MANY_REDIRECTS).
@@ -67,7 +87,7 @@
   status = 301
 
 # Legacy: /thankyou was the Google Forms landing page. Forms now confirm inline,
-# so the page is gone — keep old links/bookmarks off a 404.
+# so the page is gone - keep old links/bookmarks off a 404.
 [[redirects]]
   from = "/thankyou"
   to = "/"

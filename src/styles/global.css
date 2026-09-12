@@ -5,7 +5,7 @@
 @layer base {
   /* The [hidden] attribute must win over layout utilities. The browser default is only
      `display: none`, which loses to an explicit `display` from a class like `flex` or
-     `grid` — so toggling `el.hidden = true` on such an element would leave it visible. */
+     `grid` - so toggling `el.hidden = true` on such an element would leave it visible. */
   [hidden] {
     display: none !important;
   }
@@ -218,6 +218,15 @@
   .form-field textarea,
   .form-field select {
     @apply w-full min-w-0 max-w-full rounded border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-on-surface min-h-[2.75rem] focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary-container;
+  }
+
+  .form-field textarea {
+    field-sizing: content;
+    min-height: 5rem;
+    max-height: 28rem;
+    overflow-y: auto;
+    resize: vertical;
+    line-height: 1.5;
   }
 
   .form-field select {

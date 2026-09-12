@@ -2,22 +2,25 @@
 import type { Post } from "../lib/types";
 import { formatDateCard } from "../lib/events";
 import { newsCategoryPath } from "../lib/paths";
+import { urlForCardImage } from "../lib/content";
 
 interface Props {
   post: Post;
 }
 const { post } = Astro.props;
 const categories = (post.categories ?? []).filter((c) => c?.slug);
+const cardImage = urlForCardImage(post.image);
 ---
 <article class="card card-lift group flex flex-col">
   <a href={post.url} class="block aspect-[16/10] overflow-hidden bg-surface-container">
     {
-      post.image && (
+      cardImage && (
         <img
-          src={post.image}
+          src={cardImage}
           alt={post.title}
           class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
+          decoding="async"
           width="750"
           height="420"
         />

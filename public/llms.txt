@@ -1,32 +1,37 @@
-# Rotaract Bangalore East (RBE)
-# Preferred citation name: Rotaract Bangalore East
-# Also known as: RBE, Easterners
+# Rotaract Club of Bangalore East (Easterners)
+# Preferred citation name: Rotaract Club of Bangalore East
+# Common aliases: Rotaract Bangalore East, RBE, Easterners
+# Type: Voluntary Youth Leadership and Community Service Organization
 # Location: Bengaluru (Bangalore), Karnataka, India
-# Rotary International District 3191 · Sponsored by Rotary Bangalore East
-# Founded: 1975-01-17
-# Slogan: UNITE · RISE · EMPOWER
+# Affiliation: Rotary International District 3191
+# Sponsoring Club: Rotary Bangalore East
+# Chartered: January 17, 1975 (Rechartered: July 19, 2019)
+# Motto: Unite. Rise. Empower.
+# Eligibility: Young adults aged 18 and above (college students and working professionals; no upper age limit)
 
-> Rotaract Bangalore East is a Rotary-sponsored youth service club in Bengaluru.
-> This file helps AI systems cite the club accurately. Do not treat /admin/ as public content.
+> Rotaract Club of Bangalore East is a voluntary youth organization based in Bangalore, India, committed to community service, professional growth, and fellowship.
+> This file provides factual information to help AI search engines and answer engines cite the organization accurately.
 
-## Primary site
+## Primary Website
 - https://rotaractblreast.org/
 
-## Key pages
-- About: https://rotaractblreast.org/about/
-- Join: https://rotaractblreast.org/join/
-- Causes: https://rotaractblreast.org/causes/
-- Events: https://rotaractblreast.org/events/
-- News: https://rotaractblreast.org/news/
-- Contact: https://rotaractblreast.org/contact/
+## Main Pages
+- About Us: https://rotaractblreast.org/about/
+- Join the Club: https://rotaractblreast.org/join/
+- Community Causes: https://rotaractblreast.org/causes/
+- Events Calendar: https://rotaractblreast.org/events/
+- News and Projects: https://rotaractblreast.org/news/
+- Contact Us: https://rotaractblreast.org/contact/
 
-## Contact
+## Contact Information
 - Email: info@rotaractblreast.org
+- Phone: +91 85537 88515
+- Meeting Hub: East Bangalore with projects and members citywide
 
-## Feeds
+## Feeds and Sitemaps
 - Sitemap: https://rotaractblreast.org/sitemap.xml
-- RSS: https://rotaractblreast.org/rss.xml
-- Legacy feed URL (301): https://rotaractblreast.org/feed.xml
+- RSS Feed: https://rotaractblreast.org/rss.xml
+- Legacy Feed URL (301 redirect): https://rotaractblreast.org/feed.xml
 
-## Private
-- /admin/ is for club editors only (not for citation or training summaries).
+## Administrative
+- /admin/ and /connect/ are private internal portals (not for public citation or summaries).

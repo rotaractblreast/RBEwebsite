@@ -7,7 +7,7 @@ import { getJoinFaq, getSiteSettings } from "@/lib/content";
 const settings = await getSiteSettings();
 const faq = await getJoinFaq();
 
-// Empty until the Apps Script Web App is deployed — the form then stays in validate-only mode.
+// Empty until the Apps Script Web App is deployed - the form then stays in validate-only mode.
 const formsApi = import.meta.env.PUBLIC_FORMS_API_URL ?? "";
 
 const serviceAreas = settings.areasOfFocus.map((area) => area.title);
@@ -31,14 +31,14 @@ const jsonLd = {
 };
 ---
 <BaseLayout
-  title="Join"
-  description="Join Rotaract Bangalore East as we UNITE to RISE by learning from each other and EMPOWER the community around us and experience the joy of giving as members of RBE."
+  title="Join Us"
+  description="Join Rotaract Club of Bangalore East. Open to young adults 18+. Connect with Easterners for leadership development, community service, and fellowship."
   jsonLd={jsonLd}
 >
   <PageHero
     title="Join Us"
     eyebrow="Become an Easterner"
-    lead="UNITE with like-minded people. RISE through shared learning. EMPOWER Bangalore together."
+    lead="Connect with passionate peers, develop leadership skills, and create real community impact together."
   />
   <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "Join" }]} />
 
@@ -51,7 +51,7 @@ const jsonLd = {
           <span class="material-symbols-outlined text-3xl text-primary mb-3" aria-hidden="true">diversity_3</span>
           <h3 class="font-display text-lg font-semibold mb-2">Community</h3>
           <p class="text-on-surface-variant text-sm">
-            A family of Easterners - fellowship, mentorship, and lifelong friendships.
+            A welcoming community of Easterners offering fellowship, mentorship, and lifelong friendships.
           </p>
         </article>
         <article class="card p-6">
@@ -327,7 +327,8 @@ const jsonLd = {
                 <textarea
                   id="join-why"
                   name="why"
-                  rows="4"
+                  rows="3"
+                  placeholder="Tell us what motivates you to be part of Rotaract Bangalore East..."
                   aria-describedby="join-why-hint"
                 ></textarea>
                 <p class="form-hint" id="join-why-hint">
@@ -353,7 +354,8 @@ const jsonLd = {
                 <textarea
                   id="join-journey"
                   name="journey"
-                  rows="4"
+                  rows="3"
+                  placeholder="Your previous club, roles, key projects, or what you enjoyed..."
                   aria-describedby="join-journey-hint"
                 ></textarea>
                 <p class="form-hint" id="join-journey-hint">
@@ -371,7 +373,13 @@ const jsonLd = {
                 What are your hobbies and interests?
                 <span class="req-mark" aria-hidden="true">*</span>
               </label>
-              <textarea id="join-hobbies" name="hobbies" rows="3" required></textarea>
+              <textarea
+                id="join-hobbies"
+                name="hobbies"
+                rows="3"
+                placeholder="Reading, photography, hiking, sports, coding, volunteering..."
+                required
+              ></textarea>
               <p class="form-error" id="join-hobbies-error" role="alert" hidden></p>
             </div>
             <fieldset class="min-w-0 space-y-3" id="join-contribute-group">
@@ -438,7 +446,12 @@ const jsonLd = {
                   <label for="join-contribute-other">
                     Tell us what you have in mind <span class="req-mark" aria-hidden="true">*</span>
                   </label>
-                  <input id="join-contribute-other" name="contributeOther" type="text" />
+                  <textarea
+                    id="join-contribute-other"
+                    name="contributeOther"
+                    rows="2"
+                    placeholder="Tell us what you have in mind..."
+                  ></textarea>
                   <p class="form-error" id="join-contribute-other-error" role="alert" hidden></p>
                 </div>
               </div>
@@ -540,11 +553,40 @@ Our membership team reads every application and gets in touch, usually within a
       var why = byId("join-why");
       var club = byId("join-club");
       var journey = byId("join-journey");
+      var hobbies = byId("join-hobbies");
       var otherToggle = byId("join-contribute-other-toggle");
       var otherWrap = byId("join-contribute-other-wrap");
       var otherInput = byId("join-contribute-other");
       var contributeGroup = byId("join-contribute-group");
       var contributeError = byId("join-contribute-error");
+
+      function setupAutoExpand(el) {
+        if (!el) return function () {};
+        function adjust() {
+          if (!el.offsetParent && el.scrollHeight === 0) return;
+          el.style.height = "auto";
+          var scrollH = el.scrollHeight;
+          if (scrollH > 0) {
+            if (scrollH > 480) {
+              el.style.height = "480px";
+              el.style.overflowY = "auto";
+            } else {
+              el.style.height = scrollH + "px";
+              el.style.overflowY = "hidden";
+            }
+          }
+        }
+        el.addEventListener("input", adjust);
+        el.addEventListener("focus", adjust);
+        el.addEventListener("change", adjust);
+        adjust();
+        return adjust;
+      }
+
+      var adjustWhy = setupAutoExpand(why);
+      var adjustJourney = setupAutoExpand(journey);
+      var adjustHobbies = setupAutoExpand(hobbies);
+      var adjustOther = setupAutoExpand(otherInput);
 
       if (stamp) stamp.value = String(Date.now());
 
@@ -716,6 +758,10 @@ Our membership team reads every application and gets in touch, usually within a
         show(otherWrap, wantsOther);
         setRequired(otherInput, wantsOther);
         if (!wantsOther && otherInput) otherInput.value = "";
+
+        if (isNew) adjustWhy();
+        if (isExp) adjustJourney();
+        if (wantsOther) adjustOther();
       }
 
       function contributeCount() {
@@ -910,7 +956,7 @@ Our membership team reads every application and gets in touch, usually within a
 
         var apiUrl = form.getAttribute("data-api") || "";
         if (!apiUrl) {
-          // No Web App URL yet — show the thank-you panel so we can review it, clearly marked.
+          // No Web App URL yet - show the thank-you panel so we can review it, clearly marked.
           showThankYou(byId("join-email").value, true);
           return;
         }
@@ -930,7 +976,7 @@ Our membership team reads every application and gets in touch, usually within a
         })
           .then(readJson)
           .then(function (res) {
-            // Authoritative success is the JSON body from Code.gs — not the HTTP code.
+            // Authoritative success is the JSON body from Code.gs - not the HTTP code.
             if (!isSuccess(res)) throw new Error(failMessage(res));
             showThankYou(body.email, false);
           })
