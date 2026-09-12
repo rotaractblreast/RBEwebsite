@@ -31,10 +31,14 @@ function handleDashboardAction_(body, e) {
     }
 
     if (action === "verifySession") {
+      // Rolling session: renew 30-day token so active reviewers stay logged in indefinitely
+      var refreshedToken = createSessionToken_(session.user);
       return json_({
         ok: true,
         status: 200,
         user: session.user,
+        token: refreshedToken,
+        oneSignalAppId: (typeof getConfig_ === "function" ? (getConfig_().oneSignalAppId || "") : ""),
       });
     }
 
@@ -564,10 +568,10 @@ function formatTimestamp_(val) {
 }
 
 /**
- * Create an HMAC signed session token (valid for 12 hours) + cache it.
+ * Create an HMAC signed session token (valid for 30 days) + cache it.
  */
 function createSessionToken_(reviewer) {
-  var expiry = Date.now() + (12 * 60 * 60 * 1000); // 12 hours
+  var expiry = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days persistent session
   var payload = reviewer.email + ":" + expiry;
   var secret = getDashboardSecret_();
   var sig = Utilities.computeHmacSha256Signature(payload, secret);

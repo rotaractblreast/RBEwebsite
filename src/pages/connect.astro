@@ -955,9 +955,36 @@ const oneSignalAppId =
         const newNoteInput = document.getElementById("new-note-input");
         const modalAddNoteBtn = document.getElementById("modal-add-note-btn");
 
-        // State
-        let currentToken = sessionStorage.getItem("rbe_connect_token") || "";
-        let currentUser = JSON.parse(sessionStorage.getItem("rbe_connect_user") || "null");
+        // Persistent State Management via localStorage (with seamless fallback/migration from sessionStorage)
+        let currentToken = "";
+        let currentUser = null;
+        try {
+          currentToken = localStorage.getItem("rbe_connect_token") || sessionStorage.getItem("rbe_connect_token") || "";
+          currentUser = JSON.parse(localStorage.getItem("rbe_connect_user") || sessionStorage.getItem("rbe_connect_user") || "null");
+          if (currentToken && !localStorage.getItem("rbe_connect_token")) {
+            localStorage.setItem("rbe_connect_token", currentToken);
+            if (currentUser) {
+              localStorage.setItem("rbe_connect_user", JSON.stringify(currentUser));
+            }
+          }
+        } catch (e) {
+          console.warn("Storage access error:", e);
+        }
+
+        function clearSession() {
+          currentToken = "";
+          currentUser = null;
+          rawData = { applications: [], subscribers: [], contactMessages: [] };
+          try {
+            localStorage.removeItem("rbe_connect_token");
+            localStorage.removeItem("rbe_connect_user");
+            localStorage.removeItem("rbe_connect_data_cache");
+            sessionStorage.removeItem("rbe_connect_token");
+            sessionStorage.removeItem("rbe_connect_user");
+            sessionStorage.removeItem("rbe_connect_data_cache");
+          } catch (e) {}
+        }
+
         let activeTab = "applications"; // "applications" | "subscribers"
         let activeSubTab = "news"; // "news" | "contact"
         let rawData = { applications: [], subscribers: [], contactMessages: [] };
@@ -1743,7 +1770,11 @@ const oneSignalAppId =
 
           if (currentToken && currentUser) {
             // 1. Stale-while-revalidate: display cached data instantly (<15ms)
-            const cached = sessionStorage.getItem("rbe_connect_data_cache");
+            let cached = null;
+            try {
+              cached = localStorage.getItem("rbe_connect_data_cache") || sessionStorage.getItem("rbe_connect_data_cache");
+            } catch (e) {}
+
             if (cached) {
               try {
                 const parsed = JSON.parse(cached);
@@ -1757,19 +1788,44 @@ const oneSignalAppId =
                 renderApplications();
                 renderSubscribers();
               } catch (e) {}
+            } else {
+              // Show dashboard shell immediately so there is no flickering login screen
+              showDashboard();
             }
 
             // 2. Validate session with API and quietly revalidate
             try {
               const res = await apiPost({ action: "verifySession", token: currentToken });
               if (res.ok && res.user) {
+                if (res.token) {
+                  currentToken = res.token;
+                  try {
+                    localStorage.setItem("rbe_connect_token", currentToken);
+                  } catch (e) {}
+                }
+                if (res.oneSignalAppId) {
+                  initOneSignal(res.oneSignalAppId);
+                }
                 currentUser = res.user;
+                try {
+                  localStorage.setItem("rbe_connect_user", JSON.stringify(currentUser));
+                } catch (e) {}
                 showDashboard();
                 await fetchData(Boolean(cached), false); // silent background fetch if cache was shown
                 return;
+              } else if (res.status === 401) {
+                clearSession();
+                showAuth();
+                showToast("Session expired. Please log in again.", "lock");
+                return;
               }
             } catch (e) {
-              console.warn("Session check failed:", e);
+              console.warn("Session check network error:", e);
+              // Network blip or offline: keep reviewer logged in with local cached state
+              if (cached || currentUser) {
+                showDashboard();
+                return;
+              }
             }
           }
           showAuth();
@@ -1814,8 +1870,10 @@ const oneSignalAppId =
               }
               currentToken = res.token;
               currentUser = res.user;
-              sessionStorage.setItem("rbe_connect_token", currentToken);
-              sessionStorage.setItem("rbe_connect_user", JSON.stringify(currentUser));
+              try {
+                localStorage.setItem("rbe_connect_token", currentToken);
+                localStorage.setItem("rbe_connect_user", JSON.stringify(currentUser));
+              } catch (e) {}
               showDashboard();
               await fetchData(false, true); // Fresh fetch after login
             } else {
@@ -1844,12 +1902,7 @@ const oneSignalAppId =
 
         logoutConfirmBtn.addEventListener("click", () => {
           logoutModal.classList.add("hidden");
-          sessionStorage.removeItem("rbe_connect_token");
-          sessionStorage.removeItem("rbe_connect_user");
-          sessionStorage.removeItem("rbe_connect_data_cache");
-          currentToken = "";
-          currentUser = null;
-          rawData = { applications: [], subscribers: [], contactMessages: [] };
+          clearSession();
           showAuth();
           showToast("Logged out successfully.", "logout");
         });
@@ -1888,7 +1941,7 @@ const oneSignalAppId =
                 contactMessages: sortDescending(res.contactMessages || []),
               };
               try {
-                sessionStorage.setItem("rbe_connect_data_cache", JSON.stringify(rawData));
+                localStorage.setItem("rbe_connect_data_cache", JSON.stringify(rawData));
               } catch (e) {}
               updateMetrics();
               renderApplications();
@@ -1917,8 +1970,7 @@ const oneSignalAppId =
                 showToast("Data refreshed.", "done");
               }
             } else if (res.status === 401) {
-              sessionStorage.removeItem("rbe_connect_token");
-              sessionStorage.removeItem("rbe_connect_data_cache");
+              clearSession();
               showAuth();
               showToast("Session expired. Please log in again.", "lock");
             }
@@ -2473,7 +2525,7 @@ const oneSignalAppId =
 
               // Update client cache
               try {
-                sessionStorage.setItem("rbe_connect_data_cache", JSON.stringify(rawData));
+                localStorage.setItem("rbe_connect_data_cache", JSON.stringify(rawData));
               } catch (e) {}
 
               modalStatusBadge.innerHTML = getStatusBadge(newStatus);
@@ -2538,7 +2590,7 @@ const oneSignalAppId =
 
               // Update client cache
               try {
-                sessionStorage.setItem("rbe_connect_data_cache", JSON.stringify(rawData));
+                localStorage.setItem("rbe_connect_data_cache", JSON.stringify(rawData));
               } catch (e) {}
 
               renderNotesTimeline(res.notes);
