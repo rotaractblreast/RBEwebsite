@@ -51,50 +51,93 @@ const jsonLd = {
 
   <section class="section-pad">
     <div class="wrap">
-      {
-        live.length > 0 ? (
-          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {live.map((event) => (
-              <CardEvent event={event} now={now} />
-            ))}
-          </div>
-        ) : (
-          <div class="card p-8 sm:p-10 text-center bg-surface-container-low max-w-2xl mx-auto border border-outline-variant/30">
-            <div class="inline-flex items-center justify-center size-12 rounded-full bg-primary/10 text-primary mb-4 mx-auto">
-              <span class="material-symbols-outlined text-2xl" aria-hidden="true">event_available</span>
-            </div>
-            <h3 class="font-display text-lg font-semibold text-on-surface mb-2">
-              Planning Our Next Gathering
-            </h3>
-            <p class="text-on-surface-variant text-sm mb-6 leading-relaxed">
-              We organize regular weekend community drives, general body meetings, and social fellowship gatherings across Bangalore. While our next public date is being scheduled, explore our recent project stories or apply to receive an invitation to our next assembly.
-            </p>
-            <div class="flex flex-wrap justify-center gap-3">
-              <a href="/news/" class="btn btn-outline text-sm touch-target">Read Recent Stories</a>
-              <a href="/join/" class="btn btn-primary text-sm touch-target">Join as a Member</a>
-            </div>
-          </div>
-        )
-      }
-
-      {
-        past.length > 0 && (
-          <>
-            <h2 class="font-display text-headline-md mt-16 mb-6">Past events</h2>
-            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {pastPage.map((event) => (
+      <div id="live-events-container">
+        {
+          live.length > 0 && (
+            <div id="live-events-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {live.map((event) => (
                 <CardEvent event={event} now={now} />
               ))}
             </div>
+          )
+        }
+        <div
+          id="live-events-empty"
+          class:list={[
+            "card p-8 sm:p-10 text-center bg-surface-container-low max-w-2xl mx-auto border border-outline-variant/30",
+            { hidden: live.length > 0 },
+          ]}
+        >
+          <div class="inline-flex items-center justify-center size-12 rounded-full bg-primary/10 text-primary mb-4 mx-auto">
+            <span class="material-symbols-outlined text-2xl" aria-hidden="true">event_available</span>
+          </div>
+          <h3 class="font-display text-lg font-semibold text-on-surface mb-2">
+            Planning Our Next Gathering
+          </h3>
+          <p class="text-on-surface-variant text-sm mb-6 leading-relaxed">
+            We organize regular weekend community drives, general body meetings, and social fellowship gatherings across Bangalore. While our next public date is being scheduled, explore our recent project stories or apply to receive an invitation to our next assembly.
+          </p>
+          <div class="flex flex-wrap justify-center gap-3">
+            <a href="/news/" class="btn btn-outline text-sm touch-target">Read Recent Stories</a>
+            <a href="/join/" class="btn btn-primary text-sm touch-target">Join as a Member</a>
+          </div>
+        </div>
+      </div>
+
+      <div id="past-events-section" class={past.length > 0 ? "" : "hidden"}>
+        <h2 class="font-display text-headline-md mt-16 mb-6">Past events</h2>
+        <div id="past-events-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {pastPage.map((event) => (
+            <CardEvent event={event} now={now} />
+          ))}
+        </div>
+        {
+          past.length > 0 && (
             <Pagination
               page={page}
               totalPages={totalPages}
               basePath="/events/"
               pageHref={eventsPagePath}
             />
-          </>
-        )
-      }
+          )
+        }
+      </div>
     </div>
   </section>
+
+  <script is:inline>
+    (() => {
+      const now = Math.floor(Date.now() / 1000);
+      const liveGrid = document.getElementById("live-events-grid");
+      const emptyCard = document.getElementById("live-events-empty");
+      const pastSection = document.getElementById("past-events-section");
+      const pastGrid = document.getElementById("past-events-grid");
+
+      if (liveGrid) {
+        const liveCards = liveGrid.querySelectorAll("[data-event-card]");
+        let remaining = liveCards.length;
+
+        liveCards.forEach((card) => {
+          const end = Number(card.getAttribute("data-end") || card.getAttribute("data-start"));
+          if (end && end < now) {
+            remaining--;
+            const badge = card.querySelector("[data-event-badge]");
+            if (badge) badge.textContent = "Event";
+            card.setAttribute("data-state", "past");
+            if (pastGrid) {
+              pastGrid.prepend(card);
+              if (pastSection) pastSection.classList.remove("hidden");
+            } else {
+              card.remove();
+            }
+          }
+        });
+
+        if (remaining === 0) {
+          liveGrid.classList.add("hidden");
+          if (emptyCard) emptyCard.classList.remove("hidden");
+        }
+      }
+    })();
+  </script>
 </BaseLayout>

@@ -243,6 +243,9 @@ const jsonLd = [
           <a
             href={spotlight.url}
             class="card card-lift mb-10 grid md:grid-cols-2 overflow-hidden group"
+            data-event-spotlight
+            data-start={toUnix(spotlight.start) ?? 0}
+            data-end={toUnix(spotlight.end ?? spotlight.start) ?? 0}
           >
             {spotlight.image && (
               <div class="aspect-[16/10] md:aspect-auto md:min-h-[280px] overflow-hidden">
@@ -255,7 +258,7 @@ const jsonLd = [
               </div>
             )}
             <div class="p-6 md:p-10 flex flex-col justify-center">
-              <p class="label-caps mb-2">
+              <p class="label-caps mb-2" data-event-badge>
                 {spotlightState === "ongoing" ? "Ongoing" : "Upcoming event"}
               </p>
               <h3 class="font-display text-2xl font-bold text-on-surface mb-2">{spotlight.title}</h3>
@@ -291,4 +294,18 @@ const jsonLd = [
       </div>
     </div>
   </section>
+
+  <script is:inline>
+    (() => {
+      const now = Math.floor(Date.now() / 1000);
+      const spotlight = document.querySelector("[data-event-spotlight]");
+      if (spotlight) {
+        const end = Number(spotlight.getAttribute("data-end") || spotlight.getAttribute("data-start"));
+        if (end && end < now) {
+          const badge = spotlight.querySelector("[data-event-badge]");
+          if (badge) badge.textContent = "Past event";
+        }
+      }
+    })();
+  </script>
 </BaseLayout>

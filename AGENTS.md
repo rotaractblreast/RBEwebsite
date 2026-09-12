@@ -53,10 +53,10 @@ npm run build   →   publish dist
 
 Defined in `netlify.toml`. Netlify’s dependency phase already runs `npm ci` (cached) from `package-lock.json` — do not put `npm ci` in the build command. Node 20.
 
-### Rebuild triggers (both needed)
+### Rebuild triggers
 
-1. **Sanity publish → Netlify build hook** — so Studio edits go live without Git. See `SANITY-NETLIFY.md`.
-2. **Daily scheduled build** — upcoming / ongoing / past event buckets are computed at **build time** (`src/lib/events.ts` → `nowStamp()`). Without a daily rebuild, ended events stay “upcoming” until the next deploy.
+1. **Sanity publish -> Netlify build hook** - so Studio edits go live without Git. See `SANITY-NETLIFY.md`.
+2. **Event state transitions:** Progressively enhanced on the client (`CardEvent.astro`, `events/index.astro`, and `index.astro`) using `data-start` and `data-end` timestamps. Events automatically flip to "Past Event" and transition dynamically on the exact minute they conclude, so a daily scheduled build is no longer required.
 
 This is a **static** site: visitors never hit Sanity at request time. HTML is baked at build.
 
@@ -146,4 +146,4 @@ Do **not** run destructive purge/delete or write migrations unless the user asks
   1. Missing `PUBLIC_SANITY_*` on Netlify → build fell back / threw → pin in `netlify.toml`.
   2. Trailing-slash `force` redirects → redirect loops on `/about/` etc. → remove those rules.
 - Local uncommitted / in-flight: slimmed `netlify.toml` redirects (confirm before commit).
-- Still required ops for editors: Sanity webhook → Netlify build hook; keep daily build for event dates.
+- Still required ops for editors: Sanity webhook -> Netlify build hook (daily build for event dates is superseded by client-side progressive enhancement).

@@ -5,7 +5,7 @@ import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import MarkdownBody from "@/components/MarkdownBody.astro";
 import Share from "@/components/Share.astro";
 import { getEvents } from "@/lib/content";
-import { formatDateTime } from "@/lib/events";
+import { formatDateTime, toUnix } from "@/lib/events";
 import { breadcrumbListJsonLd, eventJsonLd } from "@/lib/seo";
 
 export async function getStaticPaths() {
@@ -108,6 +108,8 @@ const jsonLd = [
                 class="btn btn-primary w-full"
                 target="_blank"
                 rel="noopener"
+                data-event-rsvp
+                data-end={toUnix(event.end ?? event.start) ?? 0}
               >
                 {event.buttonText || "RSVP"}
               </a>
@@ -119,4 +121,19 @@ const jsonLd = [
       </aside>
     </div>
   </article>
+
+  <script is:inline>
+    (() => {
+      const rsvp = document.querySelector("[data-event-rsvp]");
+      if (rsvp) {
+        const end = Number(rsvp.getAttribute("data-end"));
+        if (end && end < Math.floor(Date.now() / 1000)) {
+          const closed = document.createElement("span");
+          closed.className = "btn btn-outline w-full opacity-60 cursor-not-allowed";
+          closed.textContent = "Event Concluded";
+          rsvp.replaceWith(closed);
+        }
+      }
+    })();
+  </script>
 </BaseLayout>

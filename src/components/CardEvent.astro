@@ -1,6 +1,6 @@
 ---
 import type { EventDoc } from "../lib/types";
-import { eventState, formatDateCard, formatEventCardStart, nowStamp } from "../lib/events";
+import { eventState, formatDateCard, formatEventCardStart, nowStamp, toUnix } from "../lib/events";
 import { urlForCardImage } from "../lib/content";
 
 interface Props {
@@ -11,8 +11,16 @@ const { event, now = nowStamp() } = Astro.props;
 const state = eventState(event.start, event.end, now);
 const label = state === "ongoing" ? "Ongoing" : state === "upcoming" ? "Upcoming" : "Event";
 const cardImage = urlForCardImage(event.image);
+const startUnix = toUnix(event.start) ?? 0;
+const endUnix = toUnix(event.end ?? event.start) ?? startUnix;
 ---
-<article class="card card-lift group flex flex-col">
+<article
+  class="card card-lift group flex flex-col"
+  data-event-card
+  data-start={startUnix}
+  data-end={endUnix}
+  data-state={state}
+>
   <a href={event.url} class="block aspect-[16/10] overflow-hidden bg-surface-container">
     {
       cardImage && (
@@ -29,7 +37,7 @@ const cardImage = urlForCardImage(event.image);
     }
   </a>
   <div class="p-5 flex flex-col flex-1">
-    <p class="label-caps mb-2">{label}</p>
+    <p class="label-caps mb-2" data-event-badge>{label}</p>
     {
       event.start && (
         <p class="text-metadata text-on-surface-variant mb-2">
