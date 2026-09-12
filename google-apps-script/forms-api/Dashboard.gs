@@ -24,15 +24,17 @@ function handleDashboardAction_(body, e) {
       return handleDashboardLogin_(body, e);
     }
 
-    // All actions below require a valid session token
-    var session = getDashboardSession_(body.token);
-    if (!session.ok) {
-      return fail_(401, session.error || "Unauthorized. Please log in.");
+    if (action === "logout") {
+      return handleDashboardLogout_(body);
     }
 
     if (action === "verifySession") {
-      // Rolling session: renew 30-day token so active reviewers stay logged in indefinitely
-      var refreshedToken = createSessionToken_(session.user);
+      // Direct sheet verification (bypass cache) to detect admin sheet changes or revocations immediately
+      var session = getDashboardSession_(body.token, true);
+      if (!session.ok) {
+        return fail_(401, session.error || "Unauthorized. Please log in.");
+      }
+      var refreshedToken = createSessionToken_(session.user, session.sessionId, session.passHash);
       return json_({
         ok: true,
         status: 200,
@@ -40,6 +42,12 @@ function handleDashboardAction_(body, e) {
         token: refreshedToken,
         oneSignalAppId: (typeof getConfig_ === "function" ? (getConfig_().oneSignalAppId || "") : ""),
       });
+    }
+
+    // All actions below require a valid session token (uses fast 5-minute memory cache)
+    var session = getDashboardSession_(body.token, false);
+    if (!session.ok) {
+      return fail_(401, session.error || "Unauthorized. Please log in.");
     }
 
     if (action === "getData") {
@@ -90,6 +98,7 @@ function handleDashboardLogin_(body, e) {
   }
 
   var reviewer = null;
+  var matchedPass = "";
   for (var i = 1; i < data.length; i++) {
     var rowEmail = String(data[i][0] == null ? "" : data[i][0]).toLowerCase().trim();
     var rowPass = String(data[i][1] == null ? "" : data[i][1]).trim();
@@ -107,6 +116,7 @@ function handleDashboardLogin_(body, e) {
       // Check password: plain text match or SHA-256 match
       var passMatch = (rowPass === password) || (rowPass === sha256Hex_(password));
       if (passMatch) {
+        matchedPass = rowPass;
         reviewer = {
           email: rowEmail,
           name: rowName || rowEmail.split("@")[0],
@@ -121,8 +131,29 @@ function handleDashboardLogin_(body, e) {
     return fail_(401, "Invalid email, password, or inactive account.");
   }
 
-  // Generate resilient HMAC session token valid for 12 hours
-  var token = createSessionToken_(reviewer);
+  var device = String(body.device || "").trim() || "Web Browser";
+  var passHash = sha256Hex_(matchedPass).substring(0, 16);
+  var sessionId = "sess_" + Utilities.getUuid().replace(/-/g, "").substring(0, 16);
+  var nowStr = formatTimestamp_(new Date());
+
+  // Record active session in the "Active Sessions" sheet
+  try {
+    var sessSh = ensureSessionsSheet_(ss);
+    sessSh.appendRow([
+      sessionId,
+      reviewer.email,
+      reviewer.name,
+      device,
+      nowStr,
+      nowStr,
+      "Active",
+    ]);
+  } catch (err) {
+    console.warn("Could not record session in Active Sessions sheet:", err);
+  }
+
+  // Generate resilient HMAC session token containing sessionId + password fingerprint
+  var token = createSessionToken_(reviewer, sessionId, passHash);
 
   return json_({
     ok: true,
@@ -134,10 +165,44 @@ function handleDashboardLogin_(body, e) {
 }
 
 /**
- * Validate session token using CacheService with HMAC fallback.
- * Immune to transient cache evictions.
+ * Handle reviewer logout: mark session as Logged Out in the sheet and revoke cache.
  */
-function getDashboardSession_(token) {
+function handleDashboardLogout_(body) {
+  var token = String(body.token || "").trim();
+  if (token) {
+    var verified = verifyHmacToken_(token);
+    if (verified.ok && verified.sessionId) {
+      var cache = CacheService.getScriptCache();
+      if (cache) {
+        cache.remove("rbe_sess_" + verified.sessionId);
+        cache.put("rbe_revoked_" + verified.sessionId, "1", 86400); // 24h revoked flag
+      }
+      try {
+        var ss = spreadsheet_();
+        var sh = ss.getSheetByName("Active Sessions");
+        if (sh) {
+          var data = sh.getDataRange().getValues();
+          for (var i = 1; i < data.length; i++) {
+            if (String(data[i][0]).trim() === verified.sessionId) {
+              sh.getRange(i + 1, 7).setValue("Logged Out");
+              sh.getRange(i + 1, 6).setValue(formatTimestamp_(new Date()));
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Error marking session logged out in sheet:", e);
+      }
+    }
+  }
+  return json_({ ok: true, status: 200, message: "Logged out successfully." });
+}
+
+/**
+ * Validate session token using CacheService with HMAC fallback and sheet revocation check.
+ * Immune to transient cache evictions and immediately respects password changes or admin revocations.
+ */
+function getDashboardSession_(token, bypassCache) {
   token = String(token || "").trim();
   if (!token) {
     return { ok: false, error: "Missing session token." };
@@ -149,19 +214,32 @@ function getDashboardSession_(token) {
     return { ok: false, error: verified.error || "Session expired or invalid. Please log in again." };
   }
 
-  // 2. Try CacheService for validated reviewer profile
   var cache = CacheService.getScriptCache();
-  var cached = cache ? cache.get("rbe_session_" + token) : null;
-  if (cached) {
-    try {
-      var user = JSON.parse(cached);
-      return { ok: true, user: user };
-    } catch (e) {
-      // fallback to sheet check
+  var sessionId = verified.sessionId;
+  var email = verified.email;
+
+  // 2. Check for instant revocation in fast memory cache
+  if (cache) {
+    if (sessionId && cache.get("rbe_revoked_" + sessionId) === "1") {
+      return { ok: false, error: "This device session has been revoked. Please log in again." };
+    }
+    if (cache.get("rbe_passrevoked_" + email) === "1") {
+      return { ok: false, error: "Password was changed. Please log in again." };
     }
   }
 
-  // 3. Verify reviewer is still active in the Reviewers sheet
+  // 3. Try CacheService for validated reviewer profile (if bypassCache is not requested)
+  if (!bypassCache && cache && sessionId) {
+    var cached = cache.get("rbe_sess_" + sessionId);
+    if (cached) {
+      try {
+        var user = JSON.parse(cached);
+        return { ok: true, user: user, sessionId: sessionId, passHash: verified.passHash };
+      } catch (e) {}
+    }
+  }
+
+  // 4. Verify reviewer is still active and password has not changed in Reviewers sheet
   var ss = spreadsheet_();
   var sh = ss.getSheetByName("Reviewers");
   if (!sh) {
@@ -170,14 +248,22 @@ function getDashboardSession_(token) {
 
   var data = sh.getDataRange().getValues();
   var activeReviewer = null;
+  var sheetPassHash = "";
+
   for (var i = 1; i < data.length; i++) {
     var rowEmail = String(data[i][0] == null ? "" : data[i][0]).toLowerCase().trim();
+    var rowPass = String(data[i][1] == null ? "" : data[i][1]).trim();
     var rowName = String(data[i][2] == null ? "" : data[i][2]).trim();
     var rowRole = String(data[i][3] == null ? "Reviewer" : data[i][3]).trim();
     var rowActive = String(data[i][4] == null ? "" : data[i][4]).toLowerCase().trim();
     var isActive = rowActive === "true" || rowActive === "1" || rowActive === "yes" || rowActive === "active";
 
-    if (rowEmail === verified.email && isActive) {
+    if (rowEmail === email) {
+      if (!isActive) {
+        if (cache && sessionId) cache.put("rbe_revoked_" + sessionId, "1", 3600);
+        return { ok: false, error: "Account inactive or disabled by administrator." };
+      }
+      sheetPassHash = sha256Hex_(rowPass).substring(0, 16);
       activeReviewer = {
         email: rowEmail,
         name: rowName || rowEmail.split("@")[0],
@@ -188,15 +274,106 @@ function getDashboardSession_(token) {
   }
 
   if (!activeReviewer) {
-    return { ok: false, error: "Account inactive or no longer authorized." };
+    if (cache && sessionId) cache.put("rbe_revoked_" + sessionId, "1", 3600);
+    return { ok: false, error: "Account no longer authorized." };
   }
 
-  // Cache profile for 15 minutes to respect sheet deactivations promptly
+  // Check password fingerprint: if password in sheet changed, reject all past sessions!
+  if (verified.passHash && sheetPassHash && verified.passHash !== sheetPassHash) {
+    if (cache) {
+      cache.put("rbe_passrevoked_" + email, "1", 3600);
+    }
+    markAllUserSessionsRevoked_(ss, email, "Revoked (Password Changed)");
+    return { ok: false, error: "Password was changed. Please log in again." };
+  }
+
+  // 5. Verify session is still active in Active Sessions sheet (if sessionId exists)
+  if (sessionId) {
+    var sessSheet = ss.getSheetByName("Active Sessions");
+    if (sessSheet) {
+      var sessData = sessSheet.getDataRange().getValues();
+      var sessionFound = false;
+      var isSessionActive = false;
+      var sessionRow = -1;
+
+      for (var s = 1; s < sessData.length; s++) {
+        var sId = String(sessData[s][0] == null ? "" : sessData[s][0]).trim();
+        if (sId === sessionId) {
+          sessionFound = true;
+          sessionRow = s + 1;
+          var sStatus = String(sessData[s][6] == null ? "" : sessData[s][6]).toLowerCase().trim();
+          isSessionActive = (sStatus === "active");
+          break;
+        }
+      }
+
+      if (sessionFound && !isSessionActive) {
+        if (cache) {
+          cache.put("rbe_revoked_" + sessionId, "1", 3600);
+        }
+        return { ok: false, error: "This device session has been revoked by an administrator." };
+      }
+
+      // Throttled update of Last Active At (at most once every 15 mins)
+      if (sessionFound && isSessionActive && sessionRow > 1) {
+        touchSessionActivity_(sessSheet, sessionRow, sessionId);
+      }
+    }
+  }
+
+  // Cache verified profile for 5 minutes (300s)
+  if (cache && sessionId) {
+    try {
+      cache.put("rbe_sess_" + sessionId, JSON.stringify(activeReviewer), 300);
+    } catch (e) {}
+  }
+
+  return { ok: true, user: activeReviewer, sessionId: sessionId, passHash: sheetPassHash };
+}
+
+/**
+ * Throttled update of Last Active At in the Active Sessions sheet (at most once every 15 min).
+ */
+function touchSessionActivity_(sh, rowIndex, sessionId) {
+  var cache = CacheService.getScriptCache();
   if (cache) {
-    cache.put("rbe_session_" + token, JSON.stringify(activeReviewer), 900);
+    var lastTouched = cache.get("rbe_touched_" + sessionId);
+    if (lastTouched) return;
+    cache.put("rbe_touched_" + sessionId, "1", 900); // 15 min throttle
   }
+  try {
+    sh.getRange(rowIndex, 6).setValue(formatTimestamp_(new Date()));
+  } catch (e) {}
+}
 
-  return { ok: true, user: activeReviewer };
+/**
+ * Invalidate all sessions for a specific user when password is changed.
+ */
+function markAllUserSessionsRevoked_(ss, email, reason) {
+  try {
+    var sh = ss.getSheetByName("Active Sessions");
+    if (!sh) return;
+    var data = sh.getDataRange().getValues();
+    email = String(email || "").toLowerCase().trim();
+    var cache = CacheService.getScriptCache();
+    var nowStr = formatTimestamp_(new Date());
+
+    for (var i = 1; i < data.length; i++) {
+      var rowEmail = String(data[i][1] == null ? "" : data[i][1]).toLowerCase().trim();
+      var rowStatus = String(data[i][6] == null ? "" : data[i][6]).toLowerCase().trim();
+      if (rowEmail === email && rowStatus === "active") {
+        sh.getRange(i + 1, 7).setValue(reason || "Revoked");
+        sh.getRange(i + 1, 6).setValue(nowStr);
+        var sId = String(data[i][0]).trim();
+        if (sId && cache) {
+          cache.remove("rbe_sess_" + sId);
+          cache.put("rbe_revoked_" + sId, "1", 86400);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Could not mark user sessions revoked:", e);
+  }
 }
 
 /**
@@ -206,14 +383,42 @@ function getDashboardSession_(token) {
 function setupDashboard() {
   var ss = spreadsheet_();
   var revSh = ensureReviewersSheet_(ss);
+  var sessSh = ensureSessionsSheet_(ss);
   var joinSh = ss.getSheetByName("Join");
   if (joinSh) {
     ensureJoinHeaders_(joinSh);
   }
   Logger.log("✓ Reviewers tab ready: " + revSh.getName());
-  Logger.log("✓ Reviewers columns: Email, Password, Name, Role, Active");
+  Logger.log("✓ Active Sessions tab ready: " + sessSh.getName());
   Logger.log("✓ Join audit columns: Col 20 (Status), Col 21 (Last Reviewer), Col 22 (Last Reviewed At), Col 23 (Notes)");
-  return "Setup complete. Reviewers sheet and Join audit columns are ready.";
+  return "Setup complete. Reviewers, Active Sessions, and Join audit columns are ready.";
+}
+
+/**
+ * Ensure the "Active Sessions" sheet exists.
+ * Headers: Session ID | Reviewer Email | Reviewer Name | Device / Platform | Logged In At | Last Active At | Status
+ */
+function ensureSessionsSheet_(ss) {
+  var name = "Active Sessions";
+  var sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.appendRow([
+      "Session ID",
+      "Reviewer Email",
+      "Reviewer Name",
+      "Device / Platform",
+      "Logged In At",
+      "Last Active At",
+      "Status",
+    ]);
+    var header = sh.getRange(1, 1, 1, 7);
+    header.setFontWeight("bold");
+    header.setBackground("#fff3e0"); // Light brand tone
+    sh.setFrozenRows(1);
+    sh.autoResizeColumns(1, 7);
+  }
+  return sh;
 }
 
 /**
@@ -569,10 +774,13 @@ function formatTimestamp_(val) {
 
 /**
  * Create an HMAC signed session token (valid for 30 days) + cache it.
+ * Format: base64(sessionId:email:expiry:passHash).hmacSignature
  */
-function createSessionToken_(reviewer) {
+function createSessionToken_(reviewer, sessionId, passHash) {
   var expiry = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days persistent session
-  var payload = reviewer.email + ":" + expiry;
+  sessionId = sessionId || ("sess_" + Utilities.getUuid().replace(/-/g, "").substring(0, 16));
+  passHash = passHash || "";
+  var payload = sessionId + ":" + reviewer.email + ":" + expiry + ":" + passHash;
   var secret = getDashboardSecret_();
   var sig = Utilities.computeHmacSha256Signature(payload, secret);
   var sigHex = bytesToHex_(sig);
@@ -580,7 +788,7 @@ function createSessionToken_(reviewer) {
 
   var cache = CacheService.getScriptCache();
   if (cache) {
-    cache.put("rbe_session_" + token, JSON.stringify(reviewer), 21600); // 6h cache
+    cache.put("rbe_sess_" + sessionId, JSON.stringify(reviewer), 300); // 5m cache
   }
 
   return token;
@@ -608,12 +816,23 @@ function verifyHmacToken_(token) {
   }
 
   var pParts = payload.split(":");
-  if (pParts.length !== 2) {
+  var sessionId = "";
+  var email = "";
+  var expiry = 0;
+  var passHash = "";
+
+  if (pParts.length === 4) {
+    sessionId = pParts[0];
+    email = pParts[1];
+    expiry = Number(pParts[2]);
+    passHash = pParts[3];
+  } else if (pParts.length === 2) {
+    // Legacy token support: email:expiry
+    email = pParts[0];
+    expiry = Number(pParts[1]);
+  } else {
     return { ok: false, error: "Invalid token payload." };
   }
-
-  var email = pParts[0];
-  var expiry = Number(pParts[1]);
 
   if (isNaN(expiry) || Date.now() > expiry) {
     return { ok: false, error: "Session expired. Please log in again." };
@@ -626,7 +845,7 @@ function verifyHmacToken_(token) {
     return { ok: false, error: "Invalid token signature." };
   }
 
-  return { ok: true, email: email };
+  return { ok: true, sessionId: sessionId, email: email, passHash: passHash, expiry: expiry };
 }
 
 /**

@@ -985,6 +985,27 @@ const oneSignalAppId =
           } catch (e) {}
         }
 
+        function getDeviceSummary() {
+          const ua = navigator.userAgent || "";
+          const isPWA = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+          let os = "Device";
+          if (/iphone/i.test(ua)) os = "iPhone";
+          else if (/ipad/i.test(ua)) os = "iPad";
+          else if (/android/i.test(ua)) os = "Android";
+          else if (/macintosh|mac os x/i.test(ua)) os = "Mac";
+          else if (/windows/i.test(ua)) os = "Windows";
+          else if (/linux/i.test(ua)) os = "Linux";
+
+          let browser = "Browser";
+          if (/crios/i.test(ua)) browser = "Chrome";
+          else if (/edg/i.test(ua)) browser = "Edge";
+          else if (/chrome/i.test(ua)) browser = "Chrome";
+          else if (/safari/i.test(ua) && !/chrome/i.test(ua)) browser = "Safari";
+          else if (/firefox/i.test(ua)) browser = "Firefox";
+
+          return os + (isPWA ? " (PWA)" : " (" + browser + ")");
+        }
+
         let activeTab = "applications"; // "applications" | "subscribers"
         let activeSubTab = "news"; // "news" | "contact"
         let rawData = { applications: [], subscribers: [], contactMessages: [] };
@@ -1861,9 +1882,10 @@ const oneSignalAppId =
 
           const email = document.getElementById("login-email").value.trim();
           const password = document.getElementById("login-password").value;
+          const device = getDeviceSummary();
 
           try {
-            const res = await apiPost({ action: "login", email, password });
+            const res = await apiPost({ action: "login", email, password, device });
             if (res.ok && res.token) {
               if (res.oneSignalAppId) {
                 initOneSignal(res.oneSignalAppId);
@@ -1902,9 +1924,13 @@ const oneSignalAppId =
 
         logoutConfirmBtn.addEventListener("click", () => {
           logoutModal.classList.add("hidden");
+          const tokenToRevoke = currentToken;
           clearSession();
           showAuth();
           showToast("Logged out successfully.", "logout");
+          if (tokenToRevoke) {
+            apiPost({ action: "logout", token: tokenToRevoke }).catch(() => null);
+          }
         });
 
         logoutModal.addEventListener("click", (e) => {
