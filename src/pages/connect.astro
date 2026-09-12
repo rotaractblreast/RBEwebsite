@@ -1837,7 +1837,7 @@ const oneSignalAppId =
               } else if (res.status === 401) {
                 clearSession();
                 showAuth();
-                showToast("Session expired. Please log in again.", "lock");
+                showToast(res.error || "Session expired. Please log in again.", "lock");
                 return;
               }
             } catch (e) {
@@ -1998,7 +1998,7 @@ const oneSignalAppId =
             } else if (res.status === 401) {
               clearSession();
               showAuth();
-              showToast("Session expired. Please log in again.", "lock");
+              showToast(res.error || "Session expired. Please log in again.", "lock");
             }
           } catch (err) {
             console.error("Failed to fetch data:", err);
@@ -2560,7 +2560,12 @@ const oneSignalAppId =
               renderApplications();
               showToast("Status updated to " + newStatus + ".", "check");
             } else {
-              showToast("Failed to update status: " + (res.error || "Unknown error"), "error");
+              if (res.status === 401) {
+                clearSession();
+                showAuth();
+                closeItemModal();
+              }
+              showToast(res.error || "Failed to update status.", "error");
             }
           } catch (err) {
             showToast("Error updating status: " + err.message, "error");
@@ -2628,7 +2633,12 @@ const oneSignalAppId =
               renderApplications();
               showToast("Note added successfully.", "done");
             } else {
-              showToast("Failed to add note: " + (res.error || "Unknown error"), "error");
+              if (res.status === 401) {
+                clearSession();
+                showAuth();
+                closeItemModal();
+              }
+              showToast(res.error || "Failed to add note.", "error");
             }
           } catch (err) {
             showToast("Error adding note: " + err.message, "error");

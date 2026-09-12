@@ -1,5 +1,5 @@
 /**
- * RBE Dashboard & Reviewer API — Google Apps Script
+ * RBE Dashboard & Reviewer API - Google Apps Script
  *
  * Provides authenticated member application review, status updates,
  * reviewer note logging, and subscriber data access.
@@ -135,6 +135,12 @@ function handleDashboardLogin_(body, e) {
   var passHash = sha256Hex_(matchedPass).substring(0, 16);
   var sessionId = "sess_" + Utilities.getUuid().replace(/-/g, "").substring(0, 16);
   var nowStr = formatTimestamp_(new Date());
+
+  // Clear any existing password revocation flag for this user
+  var cache = CacheService.getScriptCache();
+  if (cache) {
+    cache.remove("rbe_passrevoked_" + reviewer.email);
+  }
 
   // Record active session in the "Active Sessions" sheet
   try {
@@ -278,53 +284,58 @@ function getDashboardSession_(token, bypassCache) {
     return { ok: false, error: "Account no longer authorized." };
   }
 
-  // Check password fingerprint: if password in sheet changed, reject all past sessions!
-  if (verified.passHash && sheetPassHash && verified.passHash !== sheetPassHash) {
+  // Check password fingerprint: if password in sheet changed or token has no password hash, reject session!
+  if (!verified.passHash || (sheetPassHash && verified.passHash !== sheetPassHash)) {
     if (cache) {
       cache.put("rbe_passrevoked_" + email, "1", 3600);
     }
     markAllUserSessionsRevoked_(ss, email, "Revoked (Password Changed)");
-    return { ok: false, error: "Password was changed. Please log in again." };
+    return { ok: false, error: "Password was changed or session expired. Please log in again." };
   }
 
   // 5. Verify session is still active in Active Sessions sheet (if sessionId exists)
   if (sessionId) {
-    var sessSheet = ss.getSheetByName("Active Sessions");
-    if (sessSheet) {
-      var sessData = sessSheet.getDataRange().getValues();
-      var sessionFound = false;
-      var isSessionActive = false;
-      var sessionRow = -1;
+    var sessSheet = ensureSessionsSheet_(ss);
+    var sessData = sessSheet.getDataRange().getValues();
+    var sessionFound = false;
+    var isSessionActive = false;
+    var sessionRow = -1;
 
-      for (var s = 1; s < sessData.length; s++) {
-        var sId = String(sessData[s][0] == null ? "" : sessData[s][0]).trim();
-        if (sId === sessionId) {
-          sessionFound = true;
-          sessionRow = s + 1;
-          var sStatus = String(sessData[s][6] == null ? "" : sessData[s][6]).toLowerCase().trim();
-          isSessionActive = (sStatus === "active");
-          break;
-        }
+    for (var s = 1; s < sessData.length; s++) {
+      var sId = String(sessData[s][0] == null ? "" : sessData[s][0]).trim();
+      if (sId === sessionId) {
+        sessionFound = true;
+        sessionRow = s + 1;
+        var sStatus = String(sessData[s][6] == null ? "" : sessData[s][6]).toLowerCase().trim();
+        isSessionActive = (sStatus === "active");
+        break;
       }
+    }
 
-      if (sessionFound && !isSessionActive) {
-        if (cache) {
-          cache.put("rbe_revoked_" + sessionId, "1", 3600);
-        }
-        return { ok: false, error: "This device session has been revoked by an administrator." };
+    if (!sessionFound) {
+      if (cache) {
+        cache.put("rbe_revoked_" + sessionId, "1", 3600);
       }
+      return { ok: false, error: "This session has been revoked or removed. Please log in again." };
+    }
 
-      // Throttled update of Last Active At (at most once every 15 mins)
-      if (sessionFound && isSessionActive && sessionRow > 1) {
-        touchSessionActivity_(sessSheet, sessionRow, sessionId);
+    if (!isSessionActive) {
+      if (cache) {
+        cache.put("rbe_revoked_" + sessionId, "1", 3600);
       }
+      return { ok: false, error: "This device session has been revoked by an administrator." };
+    }
+
+    // Throttled update of Last Active At (at most once every 15 mins)
+    if (sessionFound && isSessionActive && sessionRow > 1) {
+      touchSessionActivity_(sessSheet, sessionRow, sessionId);
     }
   }
 
-  // Cache verified profile for 5 minutes (300s)
+  // Cache verified profile for 60 seconds (responsive to Sheet edits while protecting quota)
   if (cache && sessionId) {
     try {
-      cache.put("rbe_sess_" + sessionId, JSON.stringify(activeReviewer), 300);
+      cache.put("rbe_sess_" + sessionId, JSON.stringify(activeReviewer), 60);
     } catch (e) {}
   }
 
@@ -650,7 +661,7 @@ function findJoinRowIndex_(joinSh, requestedRow, email, timestamp) {
 /**
  * Update candidate status in the Join sheet (Column 20).
  * Also records Last Reviewer (Col 21) and Last Reviewed At (Col 22).
- * Strictly updates the sheet — NEVER triggers any email.
+ * Strictly updates the sheet - NEVER triggers any email.
  */
 function handleDashboardUpdateStatus_(body, user) {
   var requestedRow = Number(body.rowIndex);
@@ -705,7 +716,7 @@ function handleDashboardUpdateStatus_(body, user) {
 /**
  * Append a note with reviewer attribution to Column 23 (Notes).
  * Also updates Column 21 (Last Reviewer) and Column 22 (Last Reviewed At).
- * Strictly updates the sheet — NEVER triggers any email.
+ * Strictly updates the sheet - NEVER triggers any email.
  */
 function handleDashboardAddNote_(body, user) {
   var requestedRow = Number(body.rowIndex);
@@ -788,7 +799,7 @@ function createSessionToken_(reviewer, sessionId, passHash) {
 
   var cache = CacheService.getScriptCache();
   if (cache) {
-    cache.put("rbe_sess_" + sessionId, JSON.stringify(reviewer), 300); // 5m cache
+    cache.put("rbe_sess_" + sessionId, JSON.stringify(reviewer), 60); // 60s cache
   }
 
   return token;
@@ -827,9 +838,8 @@ function verifyHmacToken_(token) {
     expiry = Number(pParts[2]);
     passHash = pParts[3];
   } else if (pParts.length === 2) {
-    // Legacy token support: email:expiry
-    email = pParts[0];
-    expiry = Number(pParts[1]);
+    // Reject legacy 2-part token (email:expiry): require re-login once to register session in Active Sessions sheet
+    return { ok: false, error: "Session updated for enhanced security. Please log in again to register your session." };
   } else {
     return { ok: false, error: "Invalid token payload." };
   }
