@@ -29,7 +29,7 @@
     "dompurify": "^3.4.13",
     "easymde": "^2.21.0",
     "gray-matter": "^4.0.3",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.3.2",
     "marked": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
