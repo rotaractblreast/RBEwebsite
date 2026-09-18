@@ -22,10 +22,7 @@ import type {
 function useFs(): boolean {
   // FS collections were removed in the Sanity cutover. Only opt in explicitly for local debugging
   // after restoring markdown collections - never treat a missing project id as FS mode.
-  const flag =
-    import.meta.env.USE_FS_CONTENT ??
-    (typeof process !== "undefined" ? process.env.USE_FS_CONTENT : undefined);
-  return flag === "1";
+  return process.env.USE_FS_CONTENT === "1";
 }
 
 let cachedSanityClient: ReturnType<typeof createClient> | null = null;
@@ -33,11 +30,8 @@ let cachedImageBuilder: ReturnType<typeof imageUrlBuilder> | null = null;
 
 export function getSanityClient() {
   if (cachedSanityClient) return cachedSanityClient;
-  const projectId = import.meta.env.PUBLIC_SANITY_PROJECT_ID;
-  const dataset = import.meta.env.PUBLIC_SANITY_DATASET || "production";
-  if (!projectId || projectId === "placeholder") {
-    throw new Error("PUBLIC_SANITY_PROJECT_ID is not set");
-  }
+  const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || "t6bu0f9m";
+  const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || "production";
   cachedSanityClient = createClient({
     projectId,
     dataset,
@@ -90,7 +84,7 @@ export function urlForHeroImage(
   return urlForImage(source, 1200);
 }
 
-function postUrl(publishedAt: string, slug: string) {
+export function postUrl(publishedAt: string, slug: string) {
   const d = new Date(publishedAt);
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",

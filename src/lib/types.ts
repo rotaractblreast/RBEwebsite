@@ -74,6 +74,7 @@ export type Cause = {
 };
 
 export type TeamMember = {
+  _id?: string;
   name: string;
   role: string;
   memberSince?: string;

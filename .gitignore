@@ -8,6 +8,8 @@ vendor/
 node_modules/
 .bundle/
 .astro/
+.next/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

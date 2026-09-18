@@ -12,13 +12,16 @@ Prefer this file over chat history when resuming work.
 
 ## Stack (current)
 
-- **Astro 5** static site (`output: "static"`, `trailingSlash: "always"`)
+- **Next.js 15+** App Router with On-Demand Incremental Static Regeneration (ISR) (`trailingSlash: true`)
+- **Netlify Hosting** via `@netlify/plugin-nextjs` (production branch: `master`)
 - **Tailwind 3** with RBE design tokens (`#ff9000` brand orange)
-- **Sanity 3** via `@sanity/astro` + React Studio
-- **Pagefind** search (built into `npm run build`)
-- **RSS** (`/rss.xml`), **sitemap**, Apps Script + Sheets for join/subscribe (contact page is details-only)
+- **Sanity 3** via `next-sanity` + embedded React Studio at `/admin`
+- **Native Sanity GROQ Search** (`/api/search/` and `/search/`) — zero third-party service cost
+- **On-Demand ISR Webhook** (`/api/revalidate/`) — live editorial updates in <1s with 0 Netlify build minutes
+- **RSS** (`/rss.xml`), **sitemap** (`/sitemap.xml`), Apps Script + Sheets for join/subscribe (contact page is details-only)
+- **Reviewer Portal (`/connect`):** Standalone static PWA package in `connect-portal/` for independent deployment
 
-Jekyll, Decap, and Git Gateway are **gone**. Do not reintroduce them.
+Astro, Jekyll, Decap, and Pagefind are **gone**. Do not reintroduce them.
 
 ## Content sources
 
@@ -48,17 +51,16 @@ Jekyll, Decap, and Git Gateway are **gone**. Do not reintroduce them.
 ## Build & deploy
 
 ```text
-npm run build   →   publish dist
+npm run build   →   Next.js App Router static pre-rendering + ISR
 ```
 
-Defined in `netlify.toml`. Netlify’s dependency phase already runs `npm ci` (cached) from `package-lock.json` — do not put `npm ci` in the build command. Node 20.
+Defined in `netlify.toml`. Netlify builds via `@netlify/plugin-nextjs`. Node 20.
 
-### Rebuild triggers
+### Editorial & State Updates
 
-1. **Sanity publish -> Netlify build hook** - so Studio edits go live without Git. See `SANITY-NETLIFY.md`.
-2. **Event state transitions:** Progressively enhanced on the client (`CardEvent.astro`, `events/index.astro`, and `index.astro`) using `data-start` and `data-end` timestamps. Events automatically flip to "Past Event" and transition dynamically on the exact minute they conclude, so a daily scheduled build is no longer required.
-
-This is a **static** site: visitors never hit Sanity at request time. HTML is baked at build.
+1. **Sanity publish -> On-Demand ISR Webhook (`/api/revalidate/`):**
+   When an editor publishes in Sanity Studio, Sanity invokes `/api/revalidate/` (with optional `SANITY_REVALIDATE_SECRET`). Next.js executes `revalidatePath(...)` for affected routes, updating the live site across global Netlify CDN nodes in <1 second with 0 build minutes consumed.
+2. **Event state transitions:** Progressively enhanced on the client (`CardEvent.tsx`, `events/page.tsx`, and `app/page.tsx`) using `data-start` and `data-end` timestamps. Events automatically flip to "Past Event" dynamically on the exact minute they conclude without requiring builds.
 
 ## Studio / markdown
 
@@ -78,7 +80,7 @@ to = "/about/"
 force = true
 ```
 
-Netlify matches both `/about` and `/about/`, which causes `ERR_TOO_MANY_REDIRECTS`. Astro already emits `about/index.html`; Netlify serves `/about/` natively.
+Netlify matches both `/about` and `/about/`, which causes `ERR_TOO_MANY_REDIRECTS`. Next.js is configured with `trailingSlash: true` and handles slash normalization natively.
 
 Keep redirects **minimal and critical**, for example:
 
@@ -91,16 +93,19 @@ Do not pile on “compatibility” slash or category redirects unless there is a
 ## Key paths
 
 ```text
-src/pages/           Public routes
-src/components/      UI
+src/app/             Next.js App Router routes & API endpoints
+src/components/      React UI components
 src/lib/content.ts   Sanity (and optional FS) content API
+src/lib/sanity.ts    Sanity client instance
 src/lib/events.ts    Event state: upcoming | ongoing | past
 src/studio/          Studio UI customizations
 schemaTypes/         Sanity schemas
-scripts/             migrate / repair / purge / QA (local)
+connect-portal/      Standalone Reviewer PWA project
+scripts/             migrate / repair / purge
 _data/               Static YAML (not in Studio)
-public/              Static assets + Pagefind output sync
+public/              Static assets
 netlify.toml         Build, headers, redirects
+next.config.ts       Next.js configuration (trailingSlash: true)
 ```
 
 ## Scripts agents may run

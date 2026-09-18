@@ -8,14 +8,13 @@ import { MarkdownBodyInput } from "./src/studio/MarkdownBodyInput";
 import { RbeStudioIcon } from "./src/studio/RbeStudioIcon";
 import "easymde/dist/easymde.min.css";
 
-// Studio hydrates in the browser via @sanity/astro — use import.meta.env (Vite), not process.env.
 const projectId =
-  import.meta.env.PUBLIC_SANITY_PROJECT_ID ||
-  import.meta.env.SANITY_STUDIO_PROJECT_ID ||
-  "placeholder";
+  process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ||
+  process.env.PUBLIC_SANITY_PROJECT_ID ||
+  "t6bu0f9m";
 const dataset =
-  import.meta.env.PUBLIC_SANITY_DATASET ||
-  import.meta.env.SANITY_STUDIO_DATASET ||
+  process.env.NEXT_PUBLIC_SANITY_DATASET ||
+  process.env.PUBLIC_SANITY_DATASET ||
   "production";
 
 /** RBE brand tokens (aligned with site CSS / Tailwind theme). */
@@ -37,6 +36,7 @@ const rbeTheme = buildLegacyTheme({
 export default defineConfig({
   name: "rbe",
   title: "Rotaract Bangalore East",
+  basePath: "/admin",
   icon: RbeStudioIcon,
   theme: rbeTheme,
   projectId,

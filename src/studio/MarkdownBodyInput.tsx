@@ -354,12 +354,12 @@ export function MarkdownBodyInput(props: MarkdownInputProps) {
           }
         >
           <Box padding={4}>
-            <Stack space={4}>
+            <Stack gap={4}>
               <Text size={1} muted>
                 Selected text becomes the link label. Paste or type the URL,
                 then Insert.
               </Text>
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={1} weight="semibold">
                   Link text
                 </Text>
@@ -369,7 +369,7 @@ export function MarkdownBodyInput(props: MarkdownInputProps) {
                   onChange={(event) => setLinkText(event.currentTarget.value)}
                 />
               </Stack>
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={1} weight="semibold">
                   URL
                 </Text>
@@ -418,7 +418,7 @@ export function MarkdownBodyInput(props: MarkdownInputProps) {
           }
         >
           <Box padding={4}>
-            <Stack space={4}>
+            <Stack gap={4}>
               <Text size={1} muted>
                 Preview the image, set alt text, and an optional caption. Insert
                 uploads to Media and adds it to the body. Cancel discards the
@@ -451,7 +451,7 @@ export function MarkdownBodyInput(props: MarkdownInputProps) {
                   {uploadError}
                 </Text>
               ) : null}
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={1} weight="semibold">
                   Alt text
                 </Text>
@@ -462,7 +462,7 @@ export function MarkdownBodyInput(props: MarkdownInputProps) {
                   onChange={(event) => setAlt(event.currentTarget.value)}
                 />
               </Stack>
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={1} weight="semibold">
                   Caption (optional)
                 </Text>

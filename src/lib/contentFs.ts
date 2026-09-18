@@ -15,20 +15,20 @@ import { normalizePostCategory, normalizePostTag } from "./paths";
 const ROOT = process.cwd();
 
 function readDirMd(dir: string) {
-  const abs = path.join(ROOT, dir);
+  const abs = path.join(/*turbopackIgnore: true*/ ROOT, dir);
   if (!fs.existsSync(abs)) return [];
   return fs
     .readdirSync(abs)
     .filter((f) => f.endsWith(".md"))
     .map((f) => {
-      const raw = fs.readFileSync(path.join(abs, f), "utf8");
+      const raw = fs.readFileSync(path.join(/*turbopackIgnore: true*/ abs, f), "utf8");
       const { data, content } = matter(raw);
       return { file: f, data, content: content.trim() };
     });
 }
 
 function loadYaml<T>(rel: string): T {
-  return yaml.load(fs.readFileSync(path.join(ROOT, rel), "utf8")) as T;
+  return yaml.load(fs.readFileSync(path.join(/*turbopackIgnore: true*/ ROOT, rel), "utf8")) as T;
 }
 
 function postUrl(date: string, slug: string) {
