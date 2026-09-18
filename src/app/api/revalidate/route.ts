@@ -4,10 +4,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const expectedSecret = process.env.SANITY_REVALIDATE_SECRET;
+    const rawExpected = process.env.SANITY_REVALIDATE_SECRET;
+    const expectedSecret = rawExpected ? rawExpected.trim().replace(/^["']|["']$/g, "") : undefined;
 
     let body: any = null;
-    const querySecret = req.nextUrl.searchParams.get("secret");
+    const querySecret = req.nextUrl.searchParams.get("secret")?.trim();
+    const authHeader = req.headers.get("authorization");
+    const bearerSecret = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+    const directSecretMatch = (querySecret && querySecret === expectedSecret) || (bearerSecret && bearerSecret === expectedSecret);
 
     // If a secret is configured in Netlify
     if (expectedSecret) {
@@ -18,21 +22,24 @@ export async function POST(req: NextRequest) {
         const { isValidSignature, body: parsed } = await parseBody<{
           _type?: string;
           slug?: string | { current?: string };
-        }>(req, expectedSecret, false);
+        }>(req, expectedSecret, true);
 
         if (isValidSignature === false) {
           return NextResponse.json({ message: "Invalid signature" }, { status: 401 });
         }
         body = parsed;
-      } else if (querySecret === expectedSecret) {
-        // Fallback for manual test curls with ?secret=
+      } else if (directSecretMatch) {
+        // Fallback for manual test curls or authorized webhooks with ?secret= or Bearer
         try {
           body = await req.json();
         } catch {
           body = {};
         }
       } else {
-        return NextResponse.json({ message: "Missing or invalid secret" }, { status: 401 });
+        return NextResponse.json(
+          { message: "Missing or invalid secret / signature" },
+          { status: 401 }
+        );
       }
     } else {
       // No secret configured on server - parse JSON directly
@@ -43,56 +50,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const type = body?._type;
+    const type = body?._type || "all";
     const slug = typeof body?.slug === "string" ? body.slug : body?.slug?.current;
-    const revalidatedPaths: string[] = [];
 
-    const revalidate = (path: string) => {
-      revalidatePath(path);
-      revalidatedPaths.push(path);
-    };
+    console.log(`[revalidate] Triggered for type: ${type}, slug: ${slug || "none"}`);
 
-    // Always revalidate homepage when content changes
-    revalidate("/");
-
-    if (type === "post") {
-      revalidate("/news/");
-      revalidate("/rss.xml/");
-      if (slug) {
-        revalidate(`/news/${slug}/`);
-      }
-    } else if (type === "event") {
-      revalidate("/events/");
-      if (slug) {
-        revalidate(`/events/${slug}/`);
-      }
-    } else if (type === "cause") {
-      revalidate("/causes/");
-      if (slug) {
-        revalidate(`/causes/${slug}/`);
-      }
-    } else if (type === "team") {
-      revalidate("/about/");
-    } else if (type === "category") {
-      revalidate("/news/");
-      if (slug) {
-        revalidate(`/news/${slug}/`);
-      }
-    } else if (type === "tag") {
-      revalidate("/news/");
-      if (slug) {
-        revalidate(`/news/tag-${slug}/`);
-      }
-    } else {
-      // General/new schema type fallback: revalidates the entire layout tree
-      revalidatePath("/", "layout");
-      revalidatedPaths.push("/* (all routes)");
-    }
+    // Revalidate the entire site tree (layout + all child pages: home, news, events, causes, team, archives)
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/news");
+    revalidatePath("/events");
+    revalidatePath("/causes");
+    revalidatePath("/about");
+    revalidatePath("/rss.xml");
 
     return NextResponse.json({
       revalidated: true,
-      paths: revalidatedPaths,
-      type: type || "all",
+      type,
+      slug: slug || null,
+      scope: "full-site",
       now: Date.now(),
     });
   } catch (err: any) {
@@ -104,5 +80,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const secret = req.nextUrl.searchParams.get("secret");
+  if (!secret) {
+    return NextResponse.json({
+      status: "ok",
+      endpoint: "Sanity On-Demand ISR Webhook",
+      revalidate: "Triggered via POST with sanity-webhook-signature or GET/POST with ?secret=",
+    });
+  }
   return POST(req);
 }

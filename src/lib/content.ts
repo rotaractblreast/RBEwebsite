@@ -96,12 +96,11 @@ export function postUrl(publishedAt: string, slug: string) {
   return `/news/${get("year")}/${get("month")}/${get("day")}/${slug}/`;
 }
 
-let postsPromise: Promise<Post[]> | null = null;
-export async function getPosts(): Promise<Post[]> {
-  if (postsPromise) return postsPromise;
-  postsPromise = fetchPostsInternal();
-  return postsPromise;
-}
+import { cache } from "react";
+
+export const getPosts = cache(async function getPosts(): Promise<Post[]> {
+  return fetchPostsInternal();
+});
 
 async function fetchPostsInternal(): Promise<Post[]> {
   if (useFs()) return loadPostsFromFs();
@@ -151,12 +150,9 @@ async function fetchPostsInternal(): Promise<Post[]> {
   });
 }
 
-let eventsPromise: Promise<EventDoc[]> | null = null;
-export async function getEvents(): Promise<EventDoc[]> {
-  if (eventsPromise) return eventsPromise;
-  eventsPromise = fetchEventsInternal();
-  return eventsPromise;
-}
+export const getEvents = cache(async function getEvents(): Promise<EventDoc[]> {
+  return fetchEventsInternal();
+});
 
 async function fetchEventsInternal(): Promise<EventDoc[]> {
   if (useFs()) return loadEventsFromFs();
@@ -187,12 +183,9 @@ async function fetchEventsInternal(): Promise<EventDoc[]> {
   });
 }
 
-let causesPromise: Promise<Cause[]> | null = null;
-export async function getCauses(): Promise<Cause[]> {
-  if (causesPromise) return causesPromise;
-  causesPromise = fetchCausesInternal();
-  return causesPromise;
-}
+export const getCauses = cache(async function getCauses(): Promise<Cause[]> {
+  return fetchCausesInternal();
+});
 
 async function fetchCausesInternal(): Promise<Cause[]> {
   if (useFs()) return loadCausesFromFs();
@@ -229,12 +222,9 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   return loadSiteSettingsFromFs();
 }
 
-let teamPromise: Promise<TeamMember[]> | null = null;
-export async function getTeam(): Promise<TeamMember[]> {
-  if (teamPromise) return teamPromise;
-  teamPromise = fetchTeamInternal();
-  return teamPromise;
-}
+export const getTeam = cache(async function getTeam(): Promise<TeamMember[]> {
+  return fetchTeamInternal();
+});
 
 async function fetchTeamInternal(): Promise<TeamMember[]> {
   if (useFs()) return loadTeamFromFs();

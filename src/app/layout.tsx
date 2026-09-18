@@ -8,6 +8,8 @@ import { Subscribe } from "@/components/Subscribe";
 import { SearchModal } from "@/components/SearchModal";
 import "@/styles/global.css";
 
+export const revalidate = 60;
+
 export const viewport: Viewport = {
   themeColor: "#ff9000",
   width: "device-width",

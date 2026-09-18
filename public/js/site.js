@@ -294,8 +294,55 @@
     });
   }
 
+  // Real-time Event Progressive Enhancement (transitions live events to past as minutes expire)
+  function updateEventCards() {
+    var now = Math.floor(Date.now() / 1000);
+    var liveGrid = document.getElementById("live-events-grid");
+    var emptyCard = document.getElementById("live-events-empty");
+    var pastSection = document.getElementById("past-events-section");
+    var pastGrid = document.getElementById("past-events-grid");
+
+    if (liveGrid) {
+      var liveCards = liveGrid.querySelectorAll("[data-event-card]");
+      var remaining = liveCards.length;
+
+      liveCards.forEach(function (card) {
+        var end = Number(card.getAttribute("data-end") || card.getAttribute("data-start"));
+        if (end && end < now) {
+          remaining--;
+          var badge = card.querySelector("[data-event-badge]");
+          if (badge) badge.textContent = "Event";
+          card.setAttribute("data-state", "past");
+          if (pastGrid) {
+            pastGrid.prepend(card);
+            if (pastSection) pastSection.classList.remove("hidden");
+          } else {
+            card.remove();
+          }
+        }
+      });
+
+      if (remaining === 0) {
+        liveGrid.classList.add("hidden");
+        if (emptyCard) emptyCard.classList.remove("hidden");
+      }
+    }
+
+    document.querySelectorAll("[data-event-spotlight]").forEach(function (el) {
+      var end = Number(el.getAttribute("data-end") || el.getAttribute("data-start"));
+      if (end && end < now) {
+        var badge = el.querySelector("[data-event-badge]");
+        if (badge) badge.textContent = "Past Event";
+      }
+    });
+  }
+
   initAutoExpandTextareas();
+  updateEventCards();
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initAutoExpandTextareas);
+    document.addEventListener("DOMContentLoaded", function () {
+      initAutoExpandTextareas();
+      updateEventCards();
+    });
   }
 })();

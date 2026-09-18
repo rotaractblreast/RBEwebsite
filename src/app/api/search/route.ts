@@ -18,8 +18,8 @@ export async function GET(req: NextRequest) {
       "slug": slug.current,
       description,
       publishedAt,
-      startDate,
-      endDate
+      start,
+      end
     }`;
 
     const items = await client.fetch(groq, { term });
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         title: item.title,
         url,
         description: item.description || "",
-        date: item.publishedAt || item.startDate || null,
+        date: item.publishedAt || item.start || null,
       };
     });
 
