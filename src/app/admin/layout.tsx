@@ -1,11 +1,3 @@
-export const metadata = {
-  title: "Sanity Studio | Rotaract Bangalore East",
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
 export default function AdminLayout({
   children,
 }: {
