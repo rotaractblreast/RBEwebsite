@@ -8,6 +8,9 @@ const formsApi =
 
 const nextConfig: NextConfig = {
   trailingSlash: true,
+  outputFileTracingIncludes: {
+    "/**": ["./_data/**/*"],
+  },
   images: {
     unoptimized: true,
   },

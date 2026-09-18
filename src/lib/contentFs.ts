@@ -27,8 +27,16 @@ function readDirMd(dir: string) {
     });
 }
 
-function loadYaml<T>(rel: string): T {
-  return yaml.load(fs.readFileSync(path.join(/*turbopackIgnore: true*/ ROOT, rel), "utf8")) as T;
+function loadYaml<T>(rel: string): T | null {
+  try {
+    const file = rel.replace(/^_data\//, "");
+    const abs = path.join(process.cwd(), "_data", file);
+    if (!fs.existsSync(abs)) return null;
+    return yaml.load(fs.readFileSync(abs, "utf8")) as T;
+  } catch (err) {
+    console.warn(`[contentFs] Failed to load YAML at ${rel}:`, err);
+    return null;
+  }
 }
 
 function postUrl(date: string, slug: string) {
@@ -132,17 +140,72 @@ export function loadCausesFromFs(): Cause[] {
   });
 }
 
+const DEFAULT_SITE_SETTINGS: SiteSettings = {
+  email: "info@rotaractblreast.org",
+  phone: "+91 85537 88515",
+  location: "Bengaluru, Karnataka, India",
+  siteSocial: {
+    facebook: "https://www.facebook.com/rotaractblreast/",
+    instagram: "https://www.instagram.com/rotaractblreast/",
+    twitter: "https://twitter.com/rotaractblreast",
+    linkedin: "https://www.linkedin.com/company/rotaractblreast/",
+    youtube: "https://www.youtube.com/@rotaractblreast",
+  },
+  coreValues: [
+    {
+      title: "UNITE",
+      brief: "We are a family, and family means no one gets left behind or forgotten.",
+      image: "/images/site/unite.jpg",
+      target: "/news",
+    },
+    {
+      title: "RISE",
+      brief: "With unity, we rise by learning from each other in the true spirit of Rotaract.",
+      image: "/images/site/rise.jpg",
+      target: "/news",
+    },
+    {
+      title: "EMPOWER",
+      brief: "With unity, we rise and empower the community around us.",
+      image: "/images/site/empower.jpg",
+      target: "/news",
+    },
+  ],
+  areasOfFocus: [
+    {
+      title: "Community Service",
+      description: "Addressing critical community needs across education, health, and local welfare.",
+    },
+    {
+      title: "Professional Development",
+      description: "Empowering youth with leadership skills, career development, and mentorship.",
+    },
+    {
+      title: "International Service",
+      description: "Building global friendships, promoting peace, and driving international goodwill.",
+    },
+    {
+      title: "Club Service",
+      description: "Fostering fellowship, connection, and belonging among all club members.",
+    },
+  ],
+};
+
 let cachedSiteSettings: SiteSettings | null = null;
 export function loadSiteSettingsFromFs(): SiteSettings {
   if (cachedSiteSettings) return cachedSiteSettings;
   const info = loadYaml<Record<string, unknown>>("_data/info.yml");
+  if (!info) {
+    cachedSiteSettings = DEFAULT_SITE_SETTINGS;
+    return cachedSiteSettings;
+  }
   cachedSiteSettings = {
-    email: String(info.email ?? ""),
-    phone: String(info.phone ?? ""),
-    location: String(info.location ?? ""),
-    siteSocial: (info.site_social as SiteSettings["siteSocial"]) ?? {},
-    coreValues: (info.coreValues as SiteSettings["coreValues"]) ?? [],
-    areasOfFocus: (info.areasoffocus as SiteSettings["areasOfFocus"]) ?? [],
+    email: String(info.email ?? DEFAULT_SITE_SETTINGS.email),
+    phone: String(info.phone ?? DEFAULT_SITE_SETTINGS.phone),
+    location: String(info.location ?? DEFAULT_SITE_SETTINGS.location),
+    siteSocial: (info.site_social as SiteSettings["siteSocial"]) ?? DEFAULT_SITE_SETTINGS.siteSocial,
+    coreValues: (info.coreValues as SiteSettings["coreValues"]) ?? DEFAULT_SITE_SETTINGS.coreValues,
+    areasOfFocus: (info.areasoffocus as SiteSettings["areasOfFocus"]) ?? DEFAULT_SITE_SETTINGS.areasOfFocus,
   };
   return cachedSiteSettings;
 }
@@ -151,6 +214,7 @@ let cachedTeam: TeamMember[] | null = null;
 export function loadTeamFromFs(): TeamMember[] {
   if (cachedTeam) return cachedTeam;
   const data = loadYaml<{ members?: Array<Record<string, unknown>> }>("_data/team.yml");
+  if (!data) return [];
   cachedTeam = (data.members ?? []).map((m) => ({
     name: String(m.name ?? ""),
     role: String(m.role ?? ""),
@@ -166,6 +230,7 @@ let cachedJoinFaq: Array<{ question: string; answer: string }> | null = null;
 export function loadJoinFaqFromFs(): Array<{ question: string; answer: string }> {
   if (cachedJoinFaq) return cachedJoinFaq;
   const data = loadYaml<unknown>("_data/join_faq.yml");
+  if (!data) return [];
   if (Array.isArray(data)) {
     cachedJoinFaq = data.map((i: Record<string, string>) => ({
       question: String(i.question ?? ""),
@@ -196,6 +261,7 @@ export function loadBrandKitFromFs(): BrandKitGroup[] {
       }>;
     }>;
   }>("_data/brandkit.yml");
+  if (!data) return [];
   cachedBrandKit = (data.groups ?? []).map((g) => ({
     groupName: g.group_name,
     items: (g.items_list ?? []).map((it) => ({
