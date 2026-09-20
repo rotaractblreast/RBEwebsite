@@ -2,10 +2,15 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHero } from "@/components/PageHero";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { CardCause } from "@/components/CardCause";
+import { Pagination } from "@/components/Pagination";
 import { MarkdownBody } from "@/components/MarkdownBody";
 import { Share } from "@/components/Share";
 import { getCauses } from "@/lib/content";
 import { formatDate } from "@/lib/events";
+import { causesPagePath } from "@/lib/paths";
+import { archivePagePaths, paginateList } from "@/lib/paginate";
+import { LIST_PAGE_SIZE } from "@/lib/site";
 import { formatInrCurrency } from "@/lib/format";
 import { breadcrumbListJsonLd, causeWebPageJsonLd } from "@/lib/seo";
 
@@ -13,9 +18,15 @@ export const revalidate = 60;
 
 export async function generateStaticParams() {
   const causes = await getCauses();
-  return causes
+  const causeParams = causes
     .filter((cause) => !/^page-\d+$/i.test(cause.slug))
     .map((cause) => ({ slug: cause.slug }));
+
+  const inactive = causes.filter((c) => !c.active);
+  const { totalPages } = paginateList(inactive, 1, LIST_PAGE_SIZE);
+  const pageParams = archivePagePaths(totalPages).map((page) => ({ slug: `page-${page}` }));
+
+  return [...causeParams, ...pageParams];
 }
 
 export async function generateMetadata({
@@ -24,6 +35,21 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+
+  // Case A: Causes Archive Pagination (/causes/page-2/, etc.)
+  if (/^page-\d+$/i.test(slug)) {
+    const pageNum = slug.replace(/^page-/i, "");
+    return {
+      title: `Completed causes - page ${pageNum}`,
+      description: "Completed fundraising and service causes from Rotaract Bangalore East.",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  // Case B: Single Cause Detail
   const causes = await getCauses();
   const cause = causes.find((c) => c.slug === slug);
   if (!cause) return {};
@@ -50,12 +76,59 @@ export async function generateMetadata({
   };
 }
 
-export default async function CauseDetailPage({
+export default async function CausePageOrArchiveDispatcher({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+
+  // Case A: Causes Archive Pagination (/causes/page-2/, /causes/page-3/, etc.)
+  if (/^page-\d+$/i.test(slug)) {
+    const pageNum = parseInt(slug.replace(/^page-/i, ""), 10);
+    if (isNaN(pageNum) || pageNum < 2) notFound();
+
+    const causes = await getCauses();
+    const inactive = causes.filter((c) => !c.active);
+    const { totalPages, slice } = paginateList(inactive, pageNum, LIST_PAGE_SIZE);
+
+    if (pageNum > totalPages) notFound();
+
+    return (
+      <>
+        <PageHero
+          title="Completed causes"
+          eyebrow="Causes archive"
+          lead="Earlier community projects and fundraising from Rotaract Bangalore East."
+          showSearchLink
+        />
+        <Breadcrumbs
+          crumbs={[
+            { label: "Home", href: "/" },
+            { label: "Causes", href: "/causes/" },
+            { label: `Page ${pageNum}` },
+          ]}
+        />
+        <section className="section-pad">
+          <div className="wrap">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 opacity-90">
+              {slice.map((cause) => (
+                <CardCause key={cause._id} cause={cause} />
+              ))}
+            </div>
+            <Pagination
+              page={pageNum}
+              totalPages={totalPages}
+              basePath="/causes/"
+              pageHref={causesPagePath}
+            />
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  // Case B: Single Cause Detail
   const causes = await getCauses();
   const cause = causes.find((c) => c.slug === slug);
   if (!cause) notFound();

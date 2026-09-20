@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
         body = parsed;
       } else if (directSecretMatch) {
         // Fallback for manual test curls or authorized webhooks with ?secret= or Bearer
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         try {
           body = await req.json();
         } catch {
@@ -42,7 +43,8 @@ export async function POST(req: NextRequest) {
         );
       }
     } else {
-      // No secret configured on server - parse JSON directly
+      // No secret configured on server - parse JSON directly with brief sync delay
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       try {
         body = await req.json();
       } catch {
@@ -63,6 +65,14 @@ export async function POST(req: NextRequest) {
     revalidatePath("/causes");
     revalidatePath("/about");
     revalidatePath("/rss.xml");
+    revalidatePath("/sitemap.xml");
+
+    if (slug) {
+      if (type === "event") revalidatePath(`/events/${slug}`);
+      if (type === "cause") revalidatePath(`/causes/${slug}`);
+      if (type === "category") revalidatePath(`/news/${slug}`);
+      if (type === "tag") revalidatePath(`/news/tag-${slug}`);
+    }
 
     return NextResponse.json({
       revalidated: true,

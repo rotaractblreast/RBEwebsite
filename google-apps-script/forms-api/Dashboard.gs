@@ -20,6 +20,10 @@ function handleDashboardAction_(body, e) {
   var action = String(body.action || "").trim();
 
   try {
+    if (action === "logInstall") {
+      return handleLogInstall_(body, e);
+    }
+
     if (action === "login") {
       return handleDashboardLogin_(body, e);
     }
@@ -29,8 +33,8 @@ function handleDashboardAction_(body, e) {
     }
 
     if (action === "verifySession") {
-      // Direct sheet verification (bypass cache) to detect admin sheet changes or revocations immediately
-      var session = getDashboardSession_(body.token, true);
+      // Fast cached session verification (under 300ms) with direct sheet fallback if bypass requested
+      var session = getDashboardSession_(body.token, Boolean(body.bypassCache));
       if (!session.ok) {
         return fail_(401, session.error || "Unauthorized. Please log in.");
       }
@@ -433,6 +437,57 @@ function ensureSessionsSheet_(ss) {
 }
 
 /**
+ * Ensure the "Installs" sheet exists to log PWA installations and platform telemetry.
+ * Headers: Timestamp | Platform | Device / UserAgent | Source | Status
+ */
+function ensureInstallsSheet_(ss) {
+  var name = "Installs";
+  var sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.appendRow([
+      "Timestamp",
+      "Platform",
+      "Device / UserAgent",
+      "Source",
+      "Status",
+    ]);
+    var header = sh.getRange(1, 1, 1, 5);
+    header.setFontWeight("bold");
+    header.setBackground("#e8f5e9");
+    sh.setFrozenRows(1);
+    sh.autoResizeColumns(1, 5);
+  }
+  return sh;
+}
+
+/**
+ * Log PWA install telemetry to the Installs sheet.
+ */
+function handleLogInstall_(body, e) {
+  try {
+    var ss = spreadsheet_();
+    var sh = ensureInstallsSheet_(ss);
+    var nowStr = formatTimestamp_(new Date());
+    var platform = String(body.platform || body.os || "Web").trim();
+    var device = String(body.device || body.userAgent || header_(e, "User-Agent") || "Unknown Device").trim();
+    var source = String(body.source || "PWA Install Prompt").trim();
+    
+    sh.appendRow([
+      nowStr,
+      platform,
+      device,
+      source,
+      "Installed",
+    ]);
+    return json_({ ok: true, status: 200, message: "Install telemetry recorded." });
+  } catch (err) {
+    console.warn("Error recording install telemetry:", err);
+    return json_({ ok: true, status: 200, note: "Telemetry skipped" });
+  }
+}
+
+/**
  * Ensure the "Reviewers" sheet exists.
  * Headers: Email | Password | Name | Role | Active
  */
@@ -470,10 +525,15 @@ function ensureJoinHeaders_(sh) {
     }
   }
 
-  sh.getRange(1, 20).setValue("Status");
-  sh.getRange(1, 21).setValue("Last Reviewer");
-  sh.getRange(1, 22).setValue("Last Reviewed At");
-  sh.getRange(1, 23).setValue("Notes");
+  // Batch write headers only if missing
+  var needStatus = String(headers[19] || "").trim() !== "Status";
+  var needReviewer = String(headers[20] || "").trim() !== "Last Reviewer";
+  var needReviewedAt = String(headers[21] || "").trim() !== "Last Reviewed At";
+  var needNotes = String(headers[22] || "").trim() !== "Notes";
+
+  if (needStatus || needReviewer || needReviewedAt || needNotes) {
+    sh.getRange(1, 20, 1, 4).setValues([["Status", "Last Reviewer", "Last Reviewed At", "Notes"]]);
+  }
 }
 
 /**
@@ -799,7 +859,7 @@ function createSessionToken_(reviewer, sessionId, passHash) {
 
   var cache = CacheService.getScriptCache();
   if (cache) {
-    cache.put("rbe_sess_" + sessionId, JSON.stringify(reviewer), 60); // 60s cache
+    cache.put("rbe_sess_" + sessionId, JSON.stringify(reviewer), 900); // 15-minute cache
   }
 
   return token;

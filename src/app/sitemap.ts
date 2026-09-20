@@ -45,5 +45,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...postRoutes, ...eventRoutes, ...causeRoutes];
+  const categorySlugs = new Set<string>();
+  const tagSlugs = new Set<string>();
+  for (const p of posts) {
+    for (const c of p.categories ?? []) if (c.slug) categorySlugs.add(c.slug);
+    for (const t of p.tags ?? []) if (t.slug) tagSlugs.add(t.slug);
+  }
+
+  const categoryRoutes: MetadataRoute.Sitemap = [...categorySlugs].map((slug) => ({
+    url: `${SITE.url}/news/${slug}/`,
+    lastModified: new Date(),
+    changeFrequency: "weekly",
+    priority: 0.6,
+  }));
+
+  const tagRoutes: MetadataRoute.Sitemap = [...tagSlugs].map((slug) => ({
+    url: `${SITE.url}/news/tag-${slug}/`,
+    lastModified: new Date(),
+    changeFrequency: "weekly",
+    priority: 0.5,
+  }));
+
+  return [...staticRoutes, ...postRoutes, ...eventRoutes, ...causeRoutes, ...categoryRoutes, ...tagRoutes];
 }

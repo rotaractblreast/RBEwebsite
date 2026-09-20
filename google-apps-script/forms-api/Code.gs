@@ -40,10 +40,11 @@ var CONFIG = {
   // but still accept replies on the public club address.
   replyToEmail: "rotaractblreast@gmail.com",
   mailFromName: "Rotaract Bangalore East",
+  // Standalone portal URL for push notifications and reviewer links
+  portalUrl: "https://connect.rotaractblreast.org",
   // Soft browser Origin/Referer allow-list. Empty string = skip the check.
-  // Include every host that serves the join form. After editing, redeploy the Web App
-  // (new version) — saving Code.gs alone does not update the live /exec URL.
-  allowedOrigins: "https://rotaractblreast.org,http://localhost:4321",
+  // Include every host that serves the join form or portal.
+  allowedOrigins: "https://rotaractblreast.org,https://connect.rotaractblreast.org,http://localhost:4321,http://localhost:5173",
   // OneSignal Web Push credentials (optional — keep in the "Config" sheet tab for secrecy)
   oneSignalAppId: "",
   oneSignalApiKey: "",
@@ -125,8 +126,13 @@ function ensureConfigSheet_(ss) {
       "From display name on outbound emails"
     ]);
     sh.appendRow([
+      "portalUrl",
+      CONFIG.portalUrl || "https://connect.rotaractblreast.org",
+      "Standalone Reviewer Portal URL for notifications and reviewer CTAs"
+    ]);
+    sh.appendRow([
       "allowedOrigins",
-      CONFIG.allowedOrigins || "https://rotaractblreast.org,http://localhost:4321",
+      CONFIG.allowedOrigins || "https://rotaractblreast.org,https://connect.rotaractblreast.org,http://localhost:4321,http://localhost:5173",
       "Allowed browser origins for form submissions"
     ]);
 
@@ -496,9 +502,14 @@ function sendJoinPushNotification_(body) {
     var org = str_(body.organization || body.organizationType || "");
     var summary = org ? candidateName + " (" + org + ")" : candidateName;
 
+    var portalUrl = String(cfg.portalUrl || "https://connect.rotaractblreast.org").trim();
+    if (portalUrl.lastIndexOf("/") !== portalUrl.length - 1) {
+      portalUrl = portalUrl + "/";
+    }
+
     var authHeader = apiKey;
     if (authHeader.indexOf("Basic ") !== 0 && authHeader.indexOf("Key ") !== 0) {
-      authHeader = "Key " + authHeader;
+      authHeader = "Basic " + authHeader;
     }
 
     var payload = {
@@ -506,9 +517,10 @@ function sendJoinPushNotification_(body) {
       included_segments: ["Total Subscriptions"],
       headings: { en: "New Member Application" },
       contents: { en: summary + " has submitted an application to join Rotaract Bangalore East." },
-      url: "https://rotaractblreast.org/connect/",
+      url: portalUrl,
+      chrome_web_icon: portalUrl + "icons/icon-192.png",
       web_buttons: [
-        { id: "review-btn", text: "Review Application", url: "https://rotaractblreast.org/connect/" }
+        { id: "review-btn", text: "Review Application", url: portalUrl }
       ]
     };
 

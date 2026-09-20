@@ -31,6 +31,41 @@ const nextConfig: NextConfig = {
         destination: "/admin/",
         permanent: true,
       },
+      {
+        source: "/community-service",
+        destination: "/news/community-service/",
+        permanent: true,
+      },
+      {
+        source: "/club-service",
+        destination: "/news/club-service/",
+        permanent: true,
+      },
+      {
+        source: "/international-service",
+        destination: "/news/international-service/",
+        permanent: true,
+      },
+      {
+        source: "/professional-development",
+        destination: "/news/professional-development/",
+        permanent: true,
+      },
+      {
+        source: "/news/tag/:slug",
+        destination: "/news/tag-:slug/",
+        permanent: true,
+      },
+      {
+        source: "/news/tags/:slug",
+        destination: "/news/tag-:slug/",
+        permanent: true,
+      },
+      {
+        source: "/news/category/:slug",
+        destination: "/news/:slug/",
+        permanent: true,
+      },
     ];
   },
 };
