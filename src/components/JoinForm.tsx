@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
 interface Props {
@@ -8,6 +8,14 @@ interface Props {
   serviceAreas: string[];
   clubSkills: string[];
 }
+
+const GENDER_OPTIONS = [
+  { value: "", label: "Prefer not to say" },
+  { value: "Female", label: "Female" },
+  { value: "Male", label: "Male" },
+  { value: "Non-binary", label: "Non-binary" },
+  { value: "Other", label: "Other" },
+];
 
 export function JoinForm({ clubEmail, serviceAreas, clubSkills }: Props) {
   const [stamp, setStamp] = useState<number>(0);
@@ -22,6 +30,7 @@ export function JoinForm({ clubEmail, serviceAreas, clubSkills }: Props) {
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState("");
+  const [isGenderOpen, setIsGenderOpen] = useState(false);
   const [address, setAddress] = useState("");
   const [social, setSocial] = useState("");
   const [occupation, setOccupation] = useState<"student" | "professional" | "">("");
@@ -36,9 +45,42 @@ export function JoinForm({ clubEmail, serviceAreas, clubSkills }: Props) {
   const [contributeOther, setContributeOther] = useState("");
   const [website, setWebsite] = useState(""); // Honeypot
 
+  const genderRef = useRef<HTMLDivElement>(null);
+  const STALE_MS = 30 * 60 * 1000;
+
   useEffect(() => {
     setStamp(Date.now());
   }, []);
+
+  // Close gender dropdown on outside click or Escape
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (genderRef.current && !genderRef.current.contains(e.target as Node)) {
+        setIsGenderOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsGenderOpen(false);
+      }
+    };
+
+    if (isGenderOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isGenderOpen]);
+
+  // Re-arm form timestamp on user activity if older than 30 minutes
+  const handleActivity = () => {
+    if (Date.now() - stamp > STALE_MS) {
+      setStamp(Date.now());
+    }
+  };
 
   const handleCheckbox = (item: string) => {
     setContribute((prev) =>
@@ -78,6 +120,8 @@ export function JoinForm({ clubEmail, serviceAreas, clubSkills }: Props) {
     if (rotaractStatus === "experienced" && (!clubName.trim() || !journey.trim()))
       return setErrorMsg("Please enter your previous club name and journey.");
     if (!hobbies.trim()) return setErrorMsg("Please tell us about your hobbies and interests.");
+    if (hasContributeOther && !contributeOther.trim())
+      return setErrorMsg("Please specify how else you would like to contribute.");
 
     const apiUrl = process.env.NEXT_PUBLIC_FORMS_API_URL || "";
 
@@ -90,23 +134,29 @@ export function JoinForm({ clubEmail, serviceAreas, clubSkills }: Props) {
     setLoading(true);
 
     try {
+      const contributeList = [...contribute];
+      if (hasContributeOther && contributeOther.trim() && !contributeList.includes("Other")) {
+        contributeList.push("Other");
+      }
+
       const payload = {
-        name,
-        email,
-        phone,
+        form: "join",
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
         dob,
-        gender,
-        address,
-        social,
+        gender: gender || "",
+        address: address.trim(),
+        social: social.trim(),
         organizationType: occupation,
-        organization,
+        organization: organization.trim(),
         rotaractStatus,
-        why: rotaractStatus === "new" ? why : "",
-        clubName: rotaractStatus === "experienced" ? clubName : "",
-        journey: rotaractStatus === "experienced" ? journey : "",
-        hobbies,
-        contribute: contribute.join(", "),
-        contributeOther: hasContributeOther ? contributeOther : "",
+        why: rotaractStatus === "new" ? why.trim() : "",
+        clubName: rotaractStatus === "experienced" ? clubName.trim() : "",
+        journey: rotaractStatus === "experienced" ? journey.trim() : "",
+        hobbies: hobbies.trim(),
+        contribute: contributeList,
+        contributeOther: hasContributeOther ? contributeOther.trim() : "",
         website,
         t: stamp || Date.now(),
       };
@@ -171,7 +221,7 @@ export function JoinForm({ clubEmail, serviceAreas, clubSkills }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-10" noValidate>
+    <form onSubmit={handleSubmit} onFocus={handleActivity} className="space-y-10" noValidate>
       {/* Honeypot */}
       <div aria-hidden="true" className="sr-only">
         <label htmlFor="join-website">Website</label>
@@ -331,21 +381,81 @@ export function JoinForm({ clubEmail, serviceAreas, clubSkills }: Props) {
             <p className="text-xs text-on-surface-variant mt-1">To confirm Rotaract age eligibility (18+).</p>
           </div>
 
-          <div className="form-field">
-            <label htmlFor="join-gender" className="block text-sm font-semibold mb-1">
+          <div className="form-field relative" ref={genderRef}>
+            <label id="join-gender-label" className="block text-sm font-semibold mb-1">
               Gender
             </label>
-            <select
+            <button
               id="join-gender"
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={isGenderOpen}
+              aria-labelledby="join-gender-label join-gender"
+              onClick={() => setIsGenderOpen(!isGenderOpen)}
+              className="w-full rounded border border-outline-variant px-3 py-2.5 bg-surface-container-lowest flex items-center justify-between text-left text-on-surface focus:ring-2 focus:ring-primary focus:outline-none transition-colors"
+            >
+              <span className={gender ? "text-on-surface font-normal" : "text-on-surface-variant/80 font-normal"}>
+                {GENDER_OPTIONS.find((o) => o.value === gender)?.label || "Prefer not to say"}
+              </span>
+              <span
+                className={`material-symbols-outlined text-stone-500 transition-transform duration-200 text-[20px] ${
+                  isGenderOpen ? "rotate-180 text-primary" : ""
+                }`}
+                aria-hidden="true"
+              >
+                expand_more
+              </span>
+            </button>
+
+            {isGenderOpen && (
+              <ul
+                role="listbox"
+                aria-labelledby="join-gender-label"
+                className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-xl border border-outline-variant/60 bg-surface-container-lowest py-1 shadow-lift animate-in fade-in zoom-in-95 duration-100"
+              >
+                {GENDER_OPTIONS.map((opt) => {
+                  const isSelected = gender === opt.value;
+                  return (
+                    <li
+                      key={opt.value || "none"}
+                      role="option"
+                      aria-selected={isSelected}
+                      onClick={() => {
+                        setGender(opt.value);
+                        setIsGenderOpen(false);
+                      }}
+                      className={`px-3.5 py-2.5 text-sm flex items-center justify-between cursor-pointer transition-colors ${
+                        isSelected
+                          ? "bg-primary-container/25 text-primary font-medium"
+                          : "text-on-surface hover:bg-surface-container-low"
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {isSelected && (
+                        <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">
+                          check
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {/* Hidden select for standard form accessibility and autofill */}
+            <select
+              name="gender"
               value={gender}
               onChange={(e) => setGender(e.target.value)}
-              className="w-full rounded border border-outline-variant px-3 py-2.5 bg-surface-container-lowest focus:ring-2 focus:ring-primary focus:outline-none"
+              tabIndex={-1}
+              aria-hidden="true"
+              className="sr-only"
             >
-              <option value="">Prefer not to say</option>
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-              <option value="non-binary">Non-binary</option>
-              <option value="other">Other</option>
+              {GENDER_OPTIONS.map((opt) => (
+                <option key={opt.value || "none"} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -538,11 +648,12 @@ export function JoinForm({ clubEmail, serviceAreas, clubSkills }: Props) {
         {hasContributeOther && (
           <div className="form-field pt-2">
             <label htmlFor="join-other" className="block text-sm font-semibold mb-1">
-              Please specify
+              Please specify <span className="text-error">*</span>
             </label>
             <input
               id="join-other"
               type="text"
+              required
               value={contributeOther}
               onChange={(e) => setContributeOther(e.target.value)}
               placeholder="Other ideas or special skills…"
