@@ -20,7 +20,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.6.1",
-    "dompurify": "^3.4.13",
+    "dompurify": "^3.4.16",
     "easymde": "^2.21.0",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.0",
