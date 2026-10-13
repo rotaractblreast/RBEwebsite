@@ -27,7 +27,11 @@ export async function generateMetadata({
   params: Promise<{ year: string; month: string; day: string }>;
 }): Promise<Metadata> {
   const { year, month, day } = await params;
+  if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month) || !/^\d{2}$/.test(day)) return {};
+
   const sample = new Date(`${year}-${month}-${day}T12:00:00+05:30`);
+  if (isNaN(sample.getTime())) return {};
+
   const title = sample.toLocaleDateString("en-GB", {
     timeZone: "Asia/Kolkata",
     day: "2-digit",
@@ -50,6 +54,8 @@ export default async function NewsDayArchivePage({
   params: Promise<{ year: string; month: string; day: string }>;
 }) {
   const { year, month, day } = await params;
+  if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month) || !/^\d{2}$/.test(day)) notFound();
+
   const posts = await getPosts();
   const filtered = posts.filter((p) => {
     const parts = postDateParts(p);
@@ -59,6 +65,8 @@ export default async function NewsDayArchivePage({
   if (filtered.length === 0) notFound();
 
   const sample = new Date(`${year}-${month}-${day}T12:00:00+05:30`);
+  if (isNaN(sample.getTime())) notFound();
+
   const title = sample.toLocaleDateString("en-GB", {
     timeZone: "Asia/Kolkata",
     day: "2-digit",

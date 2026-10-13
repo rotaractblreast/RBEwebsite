@@ -7,31 +7,48 @@
 # Sponsoring Club: Rotary Bangalore East
 # Chartered: January 17, 1975 (Rechartered: July 19, 2019)
 # Motto: Unite. Rise. Empower.
+# Current Rotary Year: 2026–2027
 # Eligibility: Young adults aged 18 and above (college students and working professionals; no upper age limit)
 
-> Rotaract Club of Bangalore East is a voluntary youth organization based in Bangalore, India, committed to community service, professional growth, and fellowship.
-> This file provides factual information to help AI search engines and answer engines cite the organization accurately.
+> Rotaract Club of Bangalore East is a voluntary youth leadership and community service organization based in Bangalore, India.
+> Sponsored by Rotary Bangalore East and affiliated with Rotary International District 3191, Easterners lead high-impact civic drives, vocational mentorship, and international fellowship.
+> This file provides concise, verified facts for AI search engines, answer engines (AEO), and LLMs.
+> For the comprehensive knowledge base, see: https://rotaractblreast.org/llms-full.txt
 
 ## Primary Website
-- https://rotaractblreast.org/
-
-## Main Pages
+- Home: https://rotaractblreast.org/
 - About Us: https://rotaractblreast.org/about/
 - Join the Club: https://rotaractblreast.org/join/
 - Community Causes: https://rotaractblreast.org/causes/
 - Events Calendar: https://rotaractblreast.org/events/
 - News and Projects: https://rotaractblreast.org/news/
+- Brand Kit: https://rotaractblreast.org/brandkit/
 - Contact Us: https://rotaractblreast.org/contact/
+
+## Current Leadership (RY 2026–2027)
+- President: Rtr. R Aakash Kashyap
+- Secretary: Rtr. Vijhortha V S
+- Club Mentor: Rtn. Rtr. Arun Teja Godavarthi
+- Immediate Past President: Rtr. Surakshith S
+- Vice President: Rtr. Ashish A Ankam
+- Joint Secretary: Rtr. Sanjana R Rao
+
+## Key Flagship Causes & Initiatives
+- Crafting Roots (Feed the Hunger): Sustained hunger-relief and nutrition drives across Bangalore communities.
+- Project ROOT: Environmental sustainability through youth-led tree planting ("One Rotaractor, One Tree").
+- Project Janani: Maternal health, nourishment, and care for underprivileged mothers.
+- Global Echoes: International cross-cultural and musical exchange connecting Rotaract districts globally.
 
 ## Contact Information
 - Email: info@rotaractblreast.org
 - Phone: +91 85537 88515
-- Meeting Hub: East Bangalore with projects and members citywide
+- Meeting Hub: East Bangalore with civic projects and assemblies citywide
 
-## Feeds and Sitemaps
+## Feeds and Machine-Readable Discovery
+- Full LLM Knowledge Base: https://rotaractblreast.org/llms-full.txt
 - Sitemap: https://rotaractblreast.org/sitemap.xml
 - RSS Feed: https://rotaractblreast.org/rss.xml
 - Legacy Feed URL (301 redirect): https://rotaractblreast.org/feed.xml
 
 ## Administrative
-- /admin/ and /connect/ are private internal portals (not for public citation or summaries).
+- /admin/ and /connect/ are private internal portals (disallowed for crawler citations or summaries).

@@ -52,20 +52,39 @@ async function getKey() {
 }
 
 /**
- * Extract canonical URLs from dist/sitemap.xml
+ * Extract canonical URLs from built sitemap.xml (.next/server/app/sitemap.xml.body, .next, or dist)
  */
 async function getSitemapUrls() {
-  const sitemapPath = path.join(ROOT, "dist", "sitemap.xml");
-  try {
-    const xml = await fs.readFile(sitemapPath, "utf8");
-    const matches = xml.match(/<loc>(.*?)<\/loc>/g) || [];
-    const urls = matches
-      .map((tag) => tag.replace(/<\/?loc>/g, "").trim())
-      .filter((url) => url.startsWith(`https://${HOST}`));
-    return Array.from(new Set(urls));
-  } catch (err) {
-    throw new Error(`Failed to read sitemap at ${sitemapPath}: ${err.message}`);
+  const candidatePaths = [
+    path.join(ROOT, ".next", "server", "app", "sitemap.xml.body"),
+    path.join(ROOT, ".next", "server", "app", "sitemap.xml"),
+    path.join(ROOT, "dist", "sitemap.xml"),
+    path.join(ROOT, "public", "sitemap.xml"),
+  ];
+
+  let xml = null;
+  let usedPath = null;
+  for (const p of candidatePaths) {
+    try {
+      xml = await fs.readFile(p, "utf8");
+      usedPath = p;
+      break;
+    } catch {
+      // Continue to next candidate
+    }
   }
+
+  if (!xml) {
+    throw new Error(
+      `Could not locate built sitemap.xml in any expected locations: ${candidatePaths.join(", ")}`
+    );
+  }
+
+  const matches = xml.match(/<loc>(.*?)<\/loc>/g) || [];
+  const urls = matches
+    .map((tag) => tag.replace(/<\/?loc>/g, "").trim())
+    .filter((url) => url.startsWith(`https://${HOST}`));
+  return Array.from(new Set(urls));
 }
 
 /**

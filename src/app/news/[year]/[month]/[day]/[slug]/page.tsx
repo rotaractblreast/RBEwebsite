@@ -48,7 +48,7 @@ export async function generateMetadata({
       url: post.url,
       type: "article",
       publishedTime: post.publishedAt,
-      modifiedTime: post.publishedAt,
+      modifiedTime: post.updatedAt || post.publishedAt,
       images: post.image ? [{ url: post.image, alt: post.title }] : [],
     },
     twitter: {
@@ -89,6 +89,7 @@ export default async function NewsPostDetailPage({
       description: postDescription,
       url: post.url,
       publishedAt: post.publishedAt,
+      dateModified: post.updatedAt || post.publishedAt,
       image: post.image,
     }),
     breadcrumbListJsonLd(crumbs),

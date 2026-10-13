@@ -2,7 +2,11 @@ import { getPosts } from "@/lib/content";
 import { SITE } from "@/lib/site";
 import { NextResponse } from "next/server";
 
-export const revalidate = 60;
+export const revalidate = 3600;
+
+function isValidSlug(slug: unknown): slug is string {
+  return typeof slug === "string" && /^[a-z0-9][a-z0-9-_]*$/i.test(slug.trim());
+}
 
 function escapeXml(unsafe: string) {
   return (unsafe || "").replace(/[<>&'"]/g, (c) => {
@@ -25,7 +29,13 @@ function escapeXml(unsafe: string) {
 
 export async function GET() {
   const posts = await getPosts();
-  const items = posts.slice(0, 25);
+  const validPosts = posts.filter((p) => isValidSlug(p.slug));
+  const items = validPosts.slice(0, 25);
+
+  const newestDate = items[0]?.updatedAt || items[0]?.publishedAt;
+  const lastBuildDate = newestDate
+    ? new Date(newestDate).toUTCString()
+    : new Date().toUTCString();
 
   const rssFeed = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
@@ -34,6 +44,7 @@ export async function GET() {
     <description>${escapeXml(SITE.description)}</description>
     <link>${SITE.url}</link>
     <atom:link href="${SITE.url}/rss.xml" rel="self" type="application/rss+xml"/>
+    <lastBuildDate>${lastBuildDate}</lastBuildDate>
     ${items
       .map(
         (post) => `

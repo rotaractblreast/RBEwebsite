@@ -33,23 +33,22 @@ function handleDashboardAction_(body, e) {
     }
 
     if (action === "verifySession") {
-      // Fast cached session verification (under 300ms) with direct sheet fallback if bypass requested
-      var session = getDashboardSession_(body.token, Boolean(body.bypassCache));
+      // Direct sheet verification: check Active Sessions sheet to immediately detect admin deletions or revocations
+      var session = getDashboardSession_(body.token, true);
       if (!session.ok) {
         return fail_(401, session.error || "Unauthorized. Please log in.");
       }
-      var refreshedToken = createSessionToken_(session.user, session.sessionId, session.passHash);
       return json_({
         ok: true,
         status: 200,
         user: session.user,
-        token: refreshedToken,
+        token: String(body.token || ""),
         oneSignalAppId: (typeof getConfig_ === "function" ? (getConfig_().oneSignalAppId || "") : ""),
       });
     }
 
-    // All actions below require a valid session token (uses fast 5-minute memory cache)
-    var session = getDashboardSession_(body.token, false);
+    // All actions below require a valid session token (checks Active Sessions sheet directly)
+    var session = getDashboardSession_(body.token, true);
     if (!session.ok) {
       return fail_(401, session.error || "Unauthorized. Please log in.");
     }
@@ -164,13 +163,17 @@ function handleDashboardLogin_(body, e) {
 
   // Generate resilient HMAC session token containing sessionId + password fingerprint
   var token = createSessionToken_(reviewer, sessionId, passHash);
+  var initialPayload = compileDashboardPayload_(ss, false);
 
   return json_({
     ok: true,
     status: 200,
     token: token,
     user: reviewer,
-    oneSignalAppId: (typeof getConfig_ === "function" ? (getConfig_().oneSignalAppId || "") : ""),
+    applications: initialPayload.applications,
+    subscribers: initialPayload.subscribers,
+    contactMessages: initialPayload.contactMessages,
+    oneSignalAppId: initialPayload.oneSignalAppId || (typeof getConfig_ === "function" ? (getConfig_().oneSignalAppId || "") : ""),
   });
 }
 
@@ -318,14 +321,16 @@ function getDashboardSession_(token, bypassCache) {
 
     if (!sessionFound) {
       if (cache) {
-        cache.put("rbe_revoked_" + sessionId, "1", 3600);
+        cache.remove("rbe_sess_" + sessionId);
+        cache.put("rbe_revoked_" + sessionId, "1", 86400); // 24-hour block
       }
-      return { ok: false, error: "This session has been revoked or removed. Please log in again." };
+      return { ok: false, error: "This session has been revoked or removed from the server. Please log in again." };
     }
 
     if (!isSessionActive) {
       if (cache) {
-        cache.put("rbe_revoked_" + sessionId, "1", 3600);
+        cache.remove("rbe_sess_" + sessionId);
+        cache.put("rbe_revoked_" + sessionId, "1", 86400); // 24-hour block
       }
       return { ok: false, error: "This device session has been revoked by an administrator." };
     }
@@ -336,10 +341,10 @@ function getDashboardSession_(token, bypassCache) {
     }
   }
 
-  // Cache verified profile for 60 seconds (responsive to Sheet edits while protecting quota)
+  // Cache verified profile for 30 seconds (responsive to Sheet edits while protecting quota)
   if (cache && sessionId) {
     try {
-      cache.put("rbe_sess_" + sessionId, JSON.stringify(activeReviewer), 60);
+      cache.put("rbe_sess_" + sessionId, JSON.stringify(activeReviewer), 30);
     } catch (e) {}
   }
 
@@ -537,23 +542,22 @@ function ensureJoinHeaders_(sh) {
 }
 
 /**
- * Fetch all applications, newsletter subscribers, and contact inquiries.
+ * Compile all applications, newsletter subscribers, and contact inquiries.
  */
-function handleDashboardGetData_(bypassCache) {
+function compileDashboardPayload_(ss, bypassCache) {
   var cache = CacheService.getScriptCache();
   if (!bypassCache && cache) {
     var cached = cache.get("rbe_dash_data_v2");
     if (cached) {
       try {
-        var parsed = JSON.parse(cached);
-        return json_(parsed);
+        return JSON.parse(cached);
       } catch (e) {
         // Fallback to fresh read if cache parsing fails
       }
     }
   }
 
-  var ss = spreadsheet_();
+  ss = ss || spreadsheet_();
 
   // 1. Applications from "Join"
   var joinSh = ss.getSheetByName("Join");
@@ -597,7 +601,7 @@ function handleDashboardGetData_(bypassCache) {
         name: String(r[1] || ""),
         email: String(r[2] || ""),
         phone: String(r[3] || ""),
-        dob: String(r[4] || ""),
+        dob: formatDob_(r[4]),
         gender: String(r[5] || ""),
         address: String(r[6] || ""),
         social: String(r[7] || ""),
@@ -674,7 +678,14 @@ function handleDashboardGetData_(bypassCache) {
     }
   }
 
-  return json_(result);
+  return result;
+}
+
+/**
+ * Fetch all applications, newsletter subscribers, and contact inquiries.
+ */
+function handleDashboardGetData_(bypassCache) {
+  return json_(compileDashboardPayload_(null, bypassCache));
 }
 
 /**
@@ -750,9 +761,8 @@ function handleDashboardUpdateStatus_(body, user) {
 
   var nowStr = Utilities.formatDate(new Date(), "Asia/Kolkata", "yyyy-MM-dd HH:mm");
 
-  joinSh.getRange(actualRow, 20).setValue(newStatus);
-  joinSh.getRange(actualRow, 21).setValue(reviewerName);
-  joinSh.getRange(actualRow, 22).setValue(nowStr);
+  // Fast single batch write: Col 20 (Status), Col 21 (Last Reviewer), Col 22 (Last Reviewed At)
+  joinSh.getRange(actualRow, 20, 1, 3).setValues([[newStatus, reviewerName, nowStr]]);
 
   var cache = CacheService.getScriptCache();
   if (cache) {
@@ -796,8 +806,6 @@ function handleDashboardAddNote_(body, user) {
   var joinSh = ss.getSheetByName("Join");
   if (!joinSh) return fail_(404, "Join sheet not found.");
 
-  ensureJoinHeaders_(joinSh);
-
   var actualRow = findJoinRowIndex_(joinSh, requestedRow, email, timestamp);
   if (actualRow === -1) {
     return fail_(404, "Application record could not be found.");
@@ -809,9 +817,8 @@ function handleDashboardAddNote_(body, user) {
 
   var updatedNotes = existingNotes ? existingNotes + "\n\n" + newEntry : newEntry;
 
-  joinSh.getRange(actualRow, 21).setValue(reviewerName);
-  joinSh.getRange(actualRow, 22).setValue(timeStamp);
-  joinSh.getRange(actualRow, 23).setValue(updatedNotes);
+  // Fast single batch write: Col 21 (Last Reviewer), Col 22 (Last Reviewed At), Col 23 (Notes)
+  joinSh.getRange(actualRow, 21, 1, 3).setValues([[reviewerName, timeStamp, updatedNotes]]);
 
   var cache = CacheService.getScriptCache();
   if (cache) {
@@ -844,6 +851,17 @@ function formatTimestamp_(val) {
 }
 
 /**
+ * Format Date of Birth safely to "MMMM d, yyyy" (e.g. "March 12, 1993").
+ */
+function formatDob_(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "Asia/Kolkata", "MMMM d, yyyy");
+  }
+  return String(val);
+}
+
+/**
  * Create an HMAC signed session token (valid for 30 days) + cache it.
  * Format: base64(sessionId:email:expiry:passHash).hmacSignature
  */
@@ -859,7 +877,7 @@ function createSessionToken_(reviewer, sessionId, passHash) {
 
   var cache = CacheService.getScriptCache();
   if (cache) {
-    cache.put("rbe_sess_" + sessionId, JSON.stringify(reviewer), 900); // 15-minute cache
+    cache.put("rbe_sess_" + sessionId, JSON.stringify(reviewer), 30); // 30-second short cache
   }
 
   return token;

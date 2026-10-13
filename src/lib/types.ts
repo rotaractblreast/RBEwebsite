@@ -30,6 +30,7 @@ export type Post = {
   title: string;
   slug: string;
   publishedAt: string;
+  updatedAt?: string;
   image?: string | null;
   categories: PostCategory[];
   tags: PostTag[];
@@ -53,6 +54,7 @@ export type EventDoc = {
   description: string;
   bodyMarkdown: string;
   url: string;
+  updatedAt?: string;
 };
 
 export type Cause = {
@@ -71,6 +73,7 @@ export type Cause = {
   description: string;
   bodyMarkdown: string;
   url: string;
+  updatedAt?: string;
 };
 
 export type TeamMember = {

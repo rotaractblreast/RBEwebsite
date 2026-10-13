@@ -107,7 +107,7 @@ async function fetchPostsInternal(): Promise<Post[]> {
   const client = getSanityClient();
   const rows = await client.fetch<Array<Record<string, unknown>>>(
     `*[_type == "post"]|order(publishedAt desc){
-      _id, title, "slug": slug.current, publishedAt, image, description, bodyMarkdown,
+      _id, _updatedAt, title, "slug": slug.current, publishedAt, image, description, bodyMarkdown,
       "categories": categories[]->{
         title,
         "slug": slug.current
@@ -140,6 +140,7 @@ async function fetchPostsInternal(): Promise<Post[]> {
       title: String(r.title),
       slug,
       publishedAt,
+      updatedAt: r._updatedAt ? String(r._updatedAt) : undefined,
       image: urlForHeroImage(r.image as SanityImageSource),
       categories,
       tags,
@@ -159,7 +160,7 @@ async function fetchEventsInternal(): Promise<EventDoc[]> {
   const client = getSanityClient();
   const rows = await client.fetch<Array<Record<string, unknown>>>(
     `*[_type == "event"]|order(start desc){
-      _id, title, "slug": slug.current, start, end, venue, buttonOpen, buttonText, buttonUrl, image, intro, description, bodyMarkdown
+      _id, _updatedAt, title, "slug": slug.current, start, end, venue, buttonOpen, buttonText, buttonUrl, image, intro, description, bodyMarkdown
     }`,
   );
   return rows.map((r) => {
@@ -179,6 +180,7 @@ async function fetchEventsInternal(): Promise<EventDoc[]> {
       description: String(r.description ?? ""),
       bodyMarkdown: String(r.bodyMarkdown ?? ""),
       url: `/events/${slug}/`,
+      updatedAt: r._updatedAt ? String(r._updatedAt) : undefined,
     };
   });
 }
@@ -192,7 +194,7 @@ async function fetchCausesInternal(): Promise<Cause[]> {
   const client = getSanityClient();
   const rows = await client.fetch<Array<Record<string, unknown>>>(
     `*[_type == "cause"]{
-      _id, title, "slug": slug.current, focus, image, due, active, goal, progress, featured, donationLink, intro, description, bodyMarkdown
+      _id, _updatedAt, title, "slug": slug.current, focus, image, due, active, goal, progress, featured, donationLink, intro, description, bodyMarkdown
     }`,
   );
   return rows.map((r) => {
@@ -213,6 +215,7 @@ async function fetchCausesInternal(): Promise<Cause[]> {
       description: String(r.description ?? ""),
       bodyMarkdown: String(r.bodyMarkdown ?? ""),
       url: `/causes/${slug}/`,
+      updatedAt: r._updatedAt ? String(r._updatedAt) : undefined,
     };
   });
 }

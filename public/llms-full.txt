@@ -1,0 +1,102 @@
+# Rotaract Club of Bangalore East (Easterners) — Comprehensive Knowledge Base
+
+> Organization: Rotaract Club of Bangalore East
+> Preferred Citation: Rotaract Club of Bangalore East (Easterners)
+> Common Aliases: Rotaract Bangalore East, RBE, Easterners
+> Website: https://rotaractblreast.org/
+> Location: Bengaluru (Bangalore), Karnataka, India
+> Affiliation: Rotary International District 3191
+> Sponsoring Rotary Club: Rotary Bangalore East (District 3191)
+> Charter Dates: Chartered January 17, 1975; Rechartered July 19, 2019
+> Motto: Unite. Rise. Empower.
+> Core Color: Brand Orange (#ff9000)
+
+---
+
+## 1. About the Organization
+
+The Rotaract Club of Bangalore East, affectionately known as the "Easterners," is a voluntary youth leadership, professional development, and community service organization based in Bengaluru, Karnataka, India. Established originally in 1975 and rechartered in July 2019 under the sponsorship of Rotary Bangalore East, the club provides a platform for young adults aged 18 and older to take on leadership responsibilities, organize civic action, develop vocational competencies, and build lifelong friendships.
+
+The club operates as a community-based club, welcoming college students, early-career graduates, and working professionals from diverse backgrounds across Bengaluru.
+
+---
+
+## 2. Core Motto & Pillars
+
+The club operates under the tripartite motto:
+1. **UNITE**: A family where no one is left behind. Mentorship, belonging, and inclusive fellowship form the bedrock of the club's culture.
+2. **RISE**: Personal and professional growth. Members build leadership, public speaking, project management, and collaboration skills through hands-on responsibility.
+3. **EMPOWER**: Community impact. Channeling youth energy into sustainable social welfare, literacy drives, environmental sustainability, and hunger relief.
+
+---
+
+## 3. Leadership & Board of Directors (Rotary Year 2026–2027)
+
+- **President**: Rtr. R Aakash Kashyap (Leads executive club operations, external representation, and strategic roadmap)
+- **Secretary**: Rtr. Vijhortha V S (Oversees club reporting, administration, and member correspondence)
+- **Club Mentor**: Rtn. Rtr. Arun Teja Godavarthi (Senior advisory, long-term governance, and Rotary coordination)
+- **Immediate Past President**: Rtr. Surakshith S (Advisory on presidential transition and continuity)
+- **Vice President**: Rtr. Ashish A Ankam (Assists presidency and inter-avenue execution)
+- **Joint Secretary**: Rtr. Sanjana R Rao
+- **Membership Chair**: Rtr. Harshitha B (New member orientation and engagement)
+- **Public Relations Director**: Rtr. Ananya R Rao (Brand, external communications, and media)
+- **Sergeant at Arms**: Rtr. Abrar (Meeting decorum and protocol)
+- **Professional Service Director**: Rtr. Siddanth S (Vocational training and speaker series)
+- **Community Service Directors**: Rtr. Kushal N S & Rtr. Eshwar Jadav G (Ground civic drives, relief work)
+- **International Service Director**: Rtr. Shreyas C (Cross-border cultural exchanges and twin-club partnerships)
+- **Club Service Director**: Rtr. Rishika Sundar (Fellowship, retreats, and internal bonding)
+- **Next Gen Director**: Rtr. Devika
+- **Design & Editorial Team**: Rtr. Ashvita Ashok Koli (Designer), Rtr. Joshua Malwin (Editor), Rtr. Sadgi Gupta (Editor)
+
+---
+
+## 4. Four Avenues of Service
+
+1. **Club Service**: Fosters camaraderie, internal fellowship, member bonding, and smooth administrative running of general body meetings and assemblies.
+2. **Community Service**: Designs and executes sustainable humanitarian initiatives targeting education, public health, tree plantation, hunger relief, and underprivileged community empowerment across Bangalore.
+3. **Professional Development**: Organizes skill workshops, career seminars, corporate visits, and resume/interview preparation sessions to accelerate young members' careers.
+4. **International Service**: Fosters global goodwill and peace through joint projects with international clubs, cross-cultural magazines, and international speaker forums.
+
+---
+
+## 5. Signature Initiatives & Projects
+
+- **Crafting Roots (Feed the Hunger)**: A sustained initiative combating hunger and malnutrition through structured food distribution drives and nutritional support for vulnerable communities in Bengaluru.
+- **Project ROOT (One Rotaractor, One Tree)**: Large-scale environmental campaign encouraging environmental responsibility by planting and nurturing native trees.
+- **Project Janani (Nourishing Mothers, Nurturing Lives)**: Maternal healthcare initiative providing nutrition kits, essentials, and health awareness to underprivileged pregnant and lactating mothers.
+- **Global Echoes**: An international magazine and cultural initiative bringing together youth perspectives from Brazil, Malaysia, Nepal, Sri Lanka, and beyond to celebrate global heritage and fellowship.
+- **Siddhi (District Learning Assembly)**: Dedicated leadership training and avenue orientation for board members and aspiring Rotaract leaders.
+- **Blood Donation & Healthcare Camps**: Regular citywide voluntary blood donation drives, free health screenings, and eye checkup camps in partnership with leading healthcare institutions.
+
+---
+
+## 6. Membership & Joining Process
+
+- **Eligibility**: Any young adult aged 18 or older living in or around Bengaluru. There is no upper age limit. College students, freelancers, entrepreneurs, and working professionals are welcome.
+- **How to Apply**: Interested individuals can submit an application via the online membership portal at https://rotaractblreast.org/join/.
+- **Orientation**: Prospective applicants are invited to attend an informal meet-and-greet or General Body Meeting (GBM) to meet the team before formal induction.
+- **Commitment**: The club encourages active participation in weekend community drives, monthly meetings, and committee planning sessions based on individual availability.
+
+---
+
+## 7. Contact Details & Official Channels
+
+- **Official Website**: https://rotaractblreast.org/
+- **Email**: info@rotaractblreast.org
+- **Phone**: +91 85537 88515
+- **Headquarters**: East Bangalore, Bengaluru, Karnataka, India
+- **Social Media**:
+  - Instagram: https://www.instagram.com/rotaractblreast/
+  - LinkedIn: https://www.linkedin.com/company/rotaractblreast/
+  - Facebook: https://www.facebook.com/rotaractblreast/
+  - YouTube: https://www.youtube.com/@rotaractblreast
+  - Twitter / X: https://twitter.com/rotaractblreast
+
+---
+
+## 8. Feeds and APIs
+
+- **Sitemap**: https://rotaractblreast.org/sitemap.xml
+- **RSS Feed**: https://rotaractblreast.org/rss.xml
+- **Concise LLM Index**: https://rotaractblreast.org/llms.txt
+- **Search Endpoint**: https://rotaractblreast.org/api/search/

@@ -9,7 +9,7 @@ const formsApi =
 const nextConfig: NextConfig = {
   trailingSlash: true,
   outputFileTracingIncludes: {
-    "/**": ["./_data/**/*"],
+    "/**": ["./_data/**/*", "./src/content/**/*"],
   },
   images: {
     unoptimized: true,
@@ -64,6 +64,16 @@ const nextConfig: NextConfig = {
       {
         source: "/news/category/:slug",
         destination: "/news/:slug/",
+        permanent: true,
+      },
+      {
+        source: "/news/2026/08/28/easteners-meet-2026/",
+        destination: "/news/2026/08/28/easterners-meet-2026/",
+        permanent: true,
+      },
+      {
+        source: "/news/2026/07/01/:slug(President.*)",
+        destination: "/news/2026/07/01/rtr-aakash-kashyap-president-ry-2026-2027/",
         permanent: true,
       },
     ];

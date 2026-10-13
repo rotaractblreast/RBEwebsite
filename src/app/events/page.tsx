@@ -9,6 +9,7 @@ import { eventState, nowStamp, toUnix } from "@/lib/events";
 import { eventsPagePath } from "@/lib/paths";
 import { paginateList } from "@/lib/paginate";
 import { LIST_PAGE_SIZE, SITE } from "@/lib/site";
+import { breadcrumbListJsonLd } from "@/lib/seo";
 
 export const revalidate = 60;
 
@@ -22,7 +23,7 @@ export default async function EventsPage() {
   const events = await getEvents();
   const now = nowStamp();
   const eventsSorted = [...events].sort(
-    (a, b) => (toUnix(a.start) ?? 0) - (toUnix(b.start) ?? 0)
+    (a, b) => (toUnix(a.start) ?? 0) - (toUnix(a.start) ?? 0)
   );
   const live = eventsSorted.filter((e) => {
     const s = eventState(e.start, e.end, now);
@@ -34,22 +35,27 @@ export default async function EventsPage() {
 
   const { page, totalPages, slice: pastPage } = paginateList(past, 1, LIST_PAGE_SIZE);
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    itemListElement: live.map((e, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      url: new URL(e.url, SITE.url).href,
-      name: e.title,
-    })),
-  };
+  const crumbs = [{ label: "Home", href: "/" }, { label: "Events & Activities" }];
+  const jsonLd: Record<string, unknown>[] = [breadcrumbListJsonLd(crumbs)];
+
+  if (live.length > 0) {
+    jsonLd.push({
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      itemListElement: live.map((e, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        url: new URL(e.url, SITE.url).href,
+        name: e.title,
+      })),
+    });
+  }
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd.length === 1 ? jsonLd[0] : jsonLd) }}
       />
       <PageHero
         title="Events & Activities"

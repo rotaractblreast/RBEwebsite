@@ -59,8 +59,14 @@ Defined in `netlify.toml`. Netlify builds via `@netlify/plugin-nextjs`. Node 20.
 ### Editorial & State Updates
 
 1. **Sanity publish -> On-Demand ISR Webhook (`/api/revalidate/`):**
-   When an editor publishes in Sanity Studio, Sanity invokes `/api/revalidate/` (with optional `SANITY_REVALIDATE_SECRET`). Next.js executes `revalidatePath(...)` for affected routes, updating the live site across global Netlify CDN nodes in <1 second with 0 build minutes consumed.
-2. **Event state transitions:** Progressively enhanced on the client (`CardEvent.tsx`, `events/page.tsx`, and `app/page.tsx`) using `data-start` and `data-end` timestamps. Events automatically flip to "Past Event" dynamically on the exact minute they conclude without requiring builds.
+   When an editor publishes in Sanity Studio, Sanity invokes `/api/revalidate/` (with optional `SANITY_REVALIDATE_SECRET`). Next.js executes `revalidatePath(...)` for affected routes with trailing-slash normalization, automatically invalidates the `/sitemap.xml` ISR cache, and notifies IndexNow (`api.indexnow.org`) in real-time. Live editorial updates propagate across global Netlify CDN nodes in <1 second with 0 build minutes consumed.
+2. **Sitemap & SEO Freshness:**
+   `sitemap.ts` is an ISR route (`revalidate = 3600`) projecting real `_updatedAt` timestamps for posts, events, and causes, while static pages use a stable baseline timestamp (avoiding Googlebot lastmod spoof penalties). All post and event slugs are strictly validated (`/^[a-z0-9][a-z0-9-_]*$/i`) to prevent 404 leakage.
+3. **Structured Data & AEO:**
+   `NewsArticle` JSON-LD injects true `dateModified` timestamps from `_updatedAt`. The `/events/` page only outputs `ItemList` schema when active live events exist, preventing empty schema errors.
+4. **GEO & LLM Discovery:**
+   `public/llms.txt` and `public/llms-full.txt` provide authoritative, machine-readable club facts, leadership, and project details for AI search and answer engines.
+5. **Event state transitions:** Progressively enhanced on the client (`CardEvent.tsx`, `events/page.tsx`, and `app/page.tsx`) using `data-start` and `data-end` timestamps. Events automatically flip to "Past Event" dynamically on the exact minute they conclude without requiring builds.
 
 ## Studio / markdown
 

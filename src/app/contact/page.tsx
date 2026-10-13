@@ -4,6 +4,8 @@ import { PageHero } from "@/components/PageHero";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SocialIcon } from "@/components/SocialIcon";
 import { getSiteSettings } from "@/lib/content";
+import { breadcrumbListJsonLd } from "@/lib/seo";
+import { SITE } from "@/lib/site";
 
 export const revalidate = 60;
 
@@ -19,14 +21,44 @@ export default async function ContactPage() {
     (entry): entry is [keyof typeof settings.siteSocial, string] => Boolean(entry[1])
   );
 
+  const crumbs = [{ label: "Home", href: "/" }, { label: "Contact" }];
+  const jsonLd = [
+    breadcrumbListJsonLd(crumbs),
+    {
+      "@context": "https://schema.org",
+      "@type": "ContactPage",
+      name: "Contact Rotaract Bangalore East",
+      description:
+        "Get in touch with Rotaract Club of Bangalore East (Easterners) by email, phone, or location in Bangalore.",
+      url: `${SITE.url}/contact/`,
+      mainEntity: {
+        "@type": "NGO",
+        name: SITE.title,
+        email: settings.email,
+        telephone: settings.phone,
+        address: {
+          "@type": "PostalAddress",
+          streetAddress: settings.location,
+          addressLocality: "Bengaluru",
+          addressRegion: "KA",
+          addressCountry: "IN",
+        },
+      },
+    },
+  ];
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <PageHero
         title="Contact Us"
         eyebrow="Connect With Us"
         lead="Connect with Easterners by email, phone, or social. We are always glad to hear from you."
       />
-      <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "Contact" }]} />
+      <Breadcrumbs crumbs={crumbs} />
 
       <section className="w-full h-48 md:h-64 lg:h-80 bg-surface-container">
         <iframe

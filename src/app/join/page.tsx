@@ -3,6 +3,7 @@ import { PageHero } from "@/components/PageHero";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { JoinForm } from "@/components/JoinForm";
 import { getJoinFaq, getSiteSettings } from "@/lib/content";
+import { breadcrumbListJsonLd } from "@/lib/seo";
 
 export const revalidate = 60;
 
@@ -26,15 +27,19 @@ export default async function JoinPage() {
     "Fundraising",
   ];
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: faq.map((item) => ({
-      "@type": "Question",
-      name: item.question,
-      acceptedAnswer: { "@type": "Answer", text: item.answer },
-    })),
-  };
+  const crumbs = [{ label: "Home", href: "/" }, { label: "Join" }];
+  const jsonLd = [
+    breadcrumbListJsonLd(crumbs),
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faq.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: { "@type": "Answer", text: item.answer },
+      })),
+    },
+  ];
 
   return (
     <>

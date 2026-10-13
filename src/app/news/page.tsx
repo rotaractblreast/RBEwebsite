@@ -5,6 +5,7 @@ import { CardPost } from "@/components/CardPost";
 import { Pagination } from "@/components/Pagination";
 import { getPosts } from "@/lib/content";
 import { POSTS_PER_PAGE, SITE } from "@/lib/site";
+import { breadcrumbListJsonLd } from "@/lib/seo";
 
 export const revalidate = 60;
 
@@ -20,22 +21,27 @@ export default async function NewsPage() {
   const totalPages = Math.max(1, Math.ceil(posts.length / POSTS_PER_PAGE));
   const slice = posts.slice(0, POSTS_PER_PAGE);
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    itemListElement: slice.map((p, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      url: new URL(p.url, SITE.url).href,
-      name: p.title,
-    })),
-  };
+  const crumbs = [{ label: "Home", href: "/" }, { label: "News & Updates" }];
+  const jsonLd: Record<string, unknown>[] = [breadcrumbListJsonLd(crumbs)];
+
+  if (slice.length > 0) {
+    jsonLd.push({
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      itemListElement: slice.map((p, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        url: new URL(p.url, SITE.url).href,
+        name: p.title,
+      })),
+    });
+  }
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd.length === 1 ? jsonLd[0] : jsonLd) }}
       />
       <PageHero
         title="News & Updates"
